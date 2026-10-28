@@ -1,0 +1,26 @@
+packages:
+  - apps/*
+  - packages/*
+
+verifyDepsBeforeRun: false
+
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/engines': true
+  argon2: true
+  esbuild: true
+  prisma: true
+
+minimumReleaseAgeExclude:
+  - '@typescript-eslint/eslint-plugin@8.72.1'
+  - '@typescript-eslint/parser@8.72.1'
+  - '@typescript-eslint/project-service@8.72.1'
+  - '@typescript-eslint/scope-manager@8.72.1'
+  - '@typescript-eslint/tsconfig-utils@8.72.1'
+  - '@typescript-eslint/type-utils@8.72.1'
+  - '@typescript-eslint/types@8.72.1'
+  - '@typescript-eslint/typescript-estree@8.72.1'
+  - '@typescript-eslint/utils@8.72.1'
+  - '@typescript-eslint/visitor-keys@8.72.1'
+  - antd@6.6.8
+  - typescript-eslint@8.72.1

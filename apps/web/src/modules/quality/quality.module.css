@@ -1,0 +1,177 @@
+.heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.heading h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+}
+.muted {
+  color: #65725f;
+  line-height: 1.7;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 18px;
+  background: #f5f8f2;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+.facts dt {
+  color: #65725f;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.8;
+}
+.card {
+  padding: 18px 0;
+  border-bottom: 1px solid #e7ece3;
+  overflow-wrap: anywhere;
+}
+.card h4 {
+  margin: 0 0 10px;
+}
+.step {
+  padding: 14px 18px;
+  background: #f7f9f4;
+  border-radius: 9px;
+  margin: 10px 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.double {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.history {
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #e6ece0;
+  border-radius: 10px;
+}
+@media (max-width: 600px) {
+  .heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .facts,
+  .double {
+    grid-template-columns: 1fr;
+  }
+  .toolbar > * {
+    max-width: 100%;
+  }
+}
+
+.defectHeader h2 {
+  margin: 6px 0 12px;
+  font-size: 22px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.defectCode {
+  color: #65725f;
+  font-size: 13px;
+}
+.headerTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.detailSection {
+  margin: 20px 0 28px;
+}
+.detailSection > h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.descriptionBlock {
+  min-width: 0;
+  padding: 16px 18px;
+  background: #f7f9f5;
+  border: 1px solid #e8eee5;
+  border-radius: 10px;
+}
+.descriptionBlock h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #65725f;
+}
+.descriptionBlock p,
+.environment p {
+  margin: 0;
+}
+.behaviorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.environment {
+  margin-top: 16px;
+  color: #65725f;
+}
+.environment > span {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.detailSection .facts {
+  margin: 0;
+}
+.relatedSection > h3 {
+  margin: 24px 0 12px;
+}
+.formSteps {
+  margin: 8px 0 24px;
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+.formHint {
+  color: #65725f;
+  margin: 0 0 16px;
+}
+.optionalFields {
+  margin-bottom: 16px;
+}
+@media (max-width: 600px) {
+  .behaviorGrid,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recordFormSection {
+  margin: 18px 0 24px;
+}
+.recordFormSection h3 {
+  margin: 0 0 16px;
+  font-size: 15px;
+}

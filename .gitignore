@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.tools/
+.local/
+.env
+.env.*
+!.env.example
+coverage/
+playwright-report/
+test-results/
+*.log
+*.tsbuildinfo
+
+# Prisma 客户端由 schema 生成
+/apps/api/src/generated/prisma/

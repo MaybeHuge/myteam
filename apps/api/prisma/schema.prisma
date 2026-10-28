@@ -1,0 +1,873 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                         String              @id @default(uuid()) @db.Uuid
+  email                      String              @unique @db.VarChar(254)
+  name                       String              @db.VarChar(80)
+  passwordHash               String
+  active                     Boolean             @default(true)
+  isSystemAdmin              Boolean             @default(false)
+  version                    Int                 @default(1)
+  createdAt                  DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt                  DateTime            @updatedAt @db.Timestamptz(3)
+  notifications              Notification[]
+  sessions                   Session[]
+  ownedProjects              Project[]           @relation("ProjectOwner")
+  memberships                ProjectMember[]
+  ownedIterations            Iteration[]         @relation("IterationOwner")
+  createdRequirements        Requirement[]       @relation("RequirementCreator")
+  ownedRequirements          Requirement[]       @relation("RequirementOwner")
+  reviewingRequirements      Requirement[]       @relation("RequirementReviewer")
+  requirementReviewActions   RequirementReview[] @relation("ReviewActor")
+  assignedRequirementReviews RequirementReview[] @relation("ReviewReviewer")
+  createdTasks               Task[]              @relation("TaskCreator")
+  assignedTasks              Task[]              @relation("TaskAssignee")
+  assistedTasks              Task[]              @relation("TaskHelper")
+  requirementChanges         RequirementChange[]
+  ownedTestCases             TestCase[]          @relation("TestCaseOwner")
+  reviewingTestCases         TestCase[]          @relation("TestCaseReviewer")
+  createdTestCases           TestCase[]          @relation("TestCaseCreator")
+  testCaseReviewActions      TestCaseReview[]    @relation("TestCaseReviewActor")
+  assignedTestCaseReviews    TestCaseReview[]    @relation("TestCaseReviewReviewer")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique @db.Char(64)
+  csrfToken String   @db.VarChar(64)
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actorId   String?  @db.Uuid
+  action    String   @db.VarChar(80)
+  targetId  String?  @db.Uuid
+  requestId String   @db.VarChar(80)
+  details   Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  projectId String?  @db.Uuid
+
+  @@index([targetId, createdAt])
+  @@index([projectId, createdAt])
+}
+
+enum ProjectRole {
+  OWNER
+  PRODUCT
+  DEVELOPER
+  TESTER
+  RELEASE_MANAGER
+  VIEWER
+}
+
+enum ProjectStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  ACCEPTING
+  COMPLETED
+  ARCHIVED
+}
+
+model Project {
+  id                  String              @id @default(uuid()) @db.Uuid
+  key                 String              @unique @db.VarChar(12)
+  name                String              @db.VarChar(80)
+  description         String              @default("") @db.VarChar(2000)
+  color               String              @default("teal") @db.VarChar(20)
+  icon                String              @default("layers") @db.VarChar(20)
+  status              ProjectStatus       @default(PENDING)
+  ownerId             String              @db.Uuid
+  owner               User                @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  startDate           DateTime?           @db.Date
+  endDate             DateTime?           @db.Date
+  version             Int                 @default(1)
+  createdAt           DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
+  members             ProjectMember[]
+  iterations          Iteration[]
+  comments            Comment[]
+  attachments         Attachment[]
+  notifications       Notification[]
+  workItems           WorkItem[]
+  requirementSequence Int                 @default(0)
+  requirements        Requirement[]
+  taskSequence        Int                 @default(0)
+  tasks               Task[]
+  testCaseSequence    Int                 @default(0)
+  testCases           TestCase[]
+  testRecordSequence  Int                 @default(0)
+  testRecords         TestRecord[]
+  defectCaseLinks     DefectCaseLink[]
+  defectRecordLinks   DefectRecordLink[]
+  submissionSequence  Int                 @default(0)
+  defectSequence      Int                 @default(0)
+  releases            Release[]
+  releaseItems        ReleaseItem[]
+  builds              Build[]
+  submissions         Submission[]
+  submissionTasks     SubmissionTask[]
+  submissionReviews   SubmissionReview[]
+  testRuns            TestRun[]
+  testRunItems        TestRunItem[]
+  testResults         TestResult[]
+  defects             Defect[]
+  defectTestLinks     DefectTestLink[]
+  defectDispositions  DefectDisposition[]
+
+  @@index([ownerId, status])
+  @@index([status, updatedAt])
+}
+
+model ProjectMember {
+  projectId String        @db.Uuid
+  userId    String        @db.Uuid
+  roles     ProjectRole[]
+  version   Int           @default(1)
+  joinedAt  DateTime      @default(now()) @db.Timestamptz(3)
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, userId])
+  @@index([userId, projectId])
+}
+
+enum IterationStatus {
+  PLANNING
+  ACTIVE
+  CLOSED
+}
+
+enum WorkItemKind {
+  REQUIREMENT
+  TASK
+}
+
+enum WorkItemResolution {
+  OPEN
+  DONE
+  CANCELED
+}
+
+model Iteration {
+  id           String          @id @default(uuid()) @db.Uuid
+  projectId    String          @db.Uuid
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String          @db.VarChar(80)
+  goal         String          @default("") @db.VarChar(2000)
+  ownerId      String          @db.Uuid
+  owner        User            @relation("IterationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  startDate    DateTime        @db.Date
+  endDate      DateTime        @db.Date
+  status       IterationStatus @default(PLANNING)
+  version      Int             @default(1)
+  startedAt    DateTime?       @db.Timestamptz(3)
+  closedAt     DateTime?       @db.Timestamptz(3)
+  closeSummary String?         @db.VarChar(2000)
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime        @updatedAt @db.Timestamptz(3)
+  workItems    WorkItem[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, name])
+  @@index([projectId, status, startDate])
+  @@index([ownerId, status])
+}
+
+// M2 需求/任务共用的计划归属；领域详情以相同 id 扩展，不能复制迭代归属。
+model WorkItem {
+  id          String             @id @default(uuid()) @db.Uuid
+  projectId   String             @db.Uuid
+  project     Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  iterationId String?            @db.Uuid
+  iteration   Iteration?         @relation(fields: [projectId, iterationId], references: [projectId, id], onDelete: NoAction, onUpdate: NoAction)
+  kind        WorkItemKind
+  title       String             @db.VarChar(200)
+  resolution  WorkItemResolution @default(OPEN)
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @db.Timestamptz(3)
+
+  requirement Requirement?
+  task        Task?
+
+  @@unique([projectId, id])
+  @@index([projectId, iterationId, resolution])
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String   @db.VarChar(254)
+  ipHash    String   @db.Char(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([email, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+model IdempotencyRecord {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorId     String   @db.Uuid
+  key         String   @db.Uuid
+  requestHash String   @db.Char(64)
+  result      Json
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@unique([actorId, key])
+  @@index([expiresAt])
+}
+
+enum CollaborationTargetType {
+  TEST_RECORD
+  TEST_CASE
+  SUBMISSION
+  TEST_RUN
+  DEFECT
+  RELEASE
+  PROJECT
+  ITERATION
+  REQUIREMENT
+  TASK
+}
+
+model Comment {
+  id         String                  @id @default(uuid()) @db.Uuid
+  projectId  String                  @db.Uuid
+  project    Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  targetType CollaborationTargetType
+  targetId   String                  @db.Uuid
+  authorId   String                  @db.Uuid
+  body       String                  @db.VarChar(5000)
+  createdAt  DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@index([projectId, targetType, targetId, createdAt])
+}
+
+model Attachment {
+  id            String                  @id @default(uuid()) @db.Uuid
+  projectId     String                  @db.Uuid
+  project       Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  targetType    CollaborationTargetType
+  targetId      String                  @db.Uuid
+  uploaderId    String                  @db.Uuid
+  filename      String                  @db.VarChar(200)
+  storageKey    String                  @unique @db.VarChar(80)
+  storageBucket String?                 @db.VarChar(63)
+  contentType   String                  @db.VarChar(80)
+  size          Int
+  sha256        String                  @db.Char(64)
+  createdAt     DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@index([projectId, targetType, targetId, createdAt])
+}
+
+model Notification {
+  id          String                  @id @default(uuid()) @db.Uuid
+  projectId   String                  @db.Uuid
+  project     Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  recipientId String                  @db.Uuid
+  recipient   User                    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  targetType  CollaborationTargetType
+  targetId    String                  @db.Uuid
+  title       String                  @db.VarChar(200)
+  readAt      DateTime?               @db.Timestamptz(3)
+  createdAt   DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@index([recipientId, readAt, createdAt])
+  @@index([projectId])
+}
+
+enum RequirementStatus {
+  TESTING
+  DRAFT
+  IN_REVIEW
+  CONFIRMED
+  IMPLEMENTING
+  ACCEPTING
+  COMPLETED
+  CANCELLED
+}
+
+enum RequirementType {
+  FUNCTIONAL
+  MAINTENANCE
+}
+
+enum RequirementPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum RequirementReviewAction {
+  SUBMITTED
+  APPROVED
+  RETURNED
+  WITHDRAWN
+}
+
+model Requirement {
+  id                 String                @id @db.Uuid
+  projectId          String                @db.Uuid
+  project            Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem           WorkItem              @relation(fields: [projectId, id], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  number             Int
+  type               RequirementType       @default(FUNCTIONAL)
+  priority           RequirementPriority   @default(MEDIUM)
+  description        String                @default("") @db.VarChar(10000)
+  acceptanceCriteria String                @default("") @db.VarChar(5000)
+  ownerId            String?               @db.Uuid
+  owner              User?                 @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  reviewerId         String?               @db.Uuid
+  reviewer           User?                 @relation("RequirementReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  createdById        String                @db.Uuid
+  createdBy          User                  @relation("RequirementCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  status             RequirementStatus     @default(DRAFT)
+  revision           Int                   @default(1)
+  version            Int                   @default(1)
+  reviewRound        Int                   @default(0)
+  testCycle          Int                   @default(1)
+  acceptedRevision   Int?
+  scopeVersion       Int                   @default(0)
+  changes            RequirementChange[]
+  testCaseLinks      RequirementCaseLink[]
+  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
+  reviews            RequirementReview[]
+  tasks              Task[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, number])
+  @@index([projectId, status, priority, updatedAt])
+  @@index([ownerId, status])
+  @@index([reviewerId, status])
+}
+
+model RequirementReview {
+  id            String                  @id @default(uuid()) @db.Uuid
+  projectId     String                  @db.Uuid
+  requirementId String                  @db.Uuid
+  requirement   Requirement             @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade)
+  round         Int
+  revision      Int
+  action        RequirementReviewAction
+  actorId       String                  @db.Uuid
+  actor         User                    @relation("ReviewActor", fields: [actorId], references: [id], onDelete: Restrict)
+  reviewerId    String                  @db.Uuid
+  reviewer      User                    @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  comment       String                  @default("") @db.VarChar(2000)
+  snapshot      Json
+  createdAt     DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@unique([requirementId, round, action])
+  @@index([projectId, requirementId, createdAt])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  READY_FOR_TEST
+  TESTING
+  ACCEPTING
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id              String           @id @db.Uuid
+  projectId       String           @db.Uuid
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem        WorkItem         @relation(fields: [projectId, id], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  requirementId   String           @db.Uuid
+  requirement     Requirement      @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: NoAction, onUpdate: NoAction)
+  number          Int
+  description     String           @default("") @db.VarChar(10000)
+  priority        TaskPriority     @default(MEDIUM)
+  assigneeId      String?          @db.Uuid
+  assignee        User?            @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  createdById     String           @db.Uuid
+  createdBy       User             @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  estimatedHours  Decimal?         @db.Decimal(8, 2)
+  dueDate         DateTime?        @db.Date
+  status          TaskStatus       @default(TODO)
+  version         Int              @default(1)
+  startedAt       DateTime?        @db.Timestamptz(3)
+  blocked         Boolean          @default(false)
+  blockedReason   String           @default("") @db.VarChar(2000)
+  helperId        String?          @db.Uuid
+  helper          User?            @relation("TaskHelper", fields: [helperId], references: [id], onDelete: Restrict)
+  blockedAt       DateTime?        @db.Timestamptz(3)
+  basisRevision   Int?
+  submissionTasks SubmissionTask[]
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, number])
+  @@index([projectId, status, priority, updatedAt])
+  @@index([projectId, requirementId])
+  @@index([assigneeId, status, dueDate])
+}
+
+model RequirementChange {
+  id              String      @id @default(uuid()) @db.Uuid
+  projectId       String      @db.Uuid
+  requirementId   String      @db.Uuid
+  requirement     Requirement @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade)
+  actorId         String      @db.Uuid
+  actor           User        @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  fromRevision    Int
+  toRevision      Int
+  scopeVersion    Int
+  reason          String      @db.VarChar(500)
+  impact          String      @db.VarChar(2000)
+  before          Json
+  after           Json
+  affectedTaskIds Json
+  effects         Json
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@unique([requirementId, scopeVersion])
+  @@index([projectId, requirementId, createdAt])
+}
+
+enum TestCaseStatus {
+  DRAFT
+  IN_REVIEW
+  READY
+  DEPRECATED
+}
+
+model TestCase {
+  id               String                @id @default(uuid()) @db.Uuid
+  projectId        String                @db.Uuid
+  project          Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number           Int
+  title            String                @db.VarChar(200)
+  preconditions    String                @default("") @db.VarChar(5000)
+  steps            Json
+  priority         RequirementPriority   @default(MEDIUM)
+  ownerId          String?               @db.Uuid
+  owner            User?                 @relation("TestCaseOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  reviewerId       String?               @db.Uuid
+  reviewer         User?                 @relation("TestCaseReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  createdById      String                @db.Uuid
+  createdBy        User                  @relation("TestCaseCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  status           TestCaseStatus        @default(DRAFT)
+  revision         Int                   @default(1)
+  approvedRevision Int?
+  version          Int                   @default(1)
+  reviewRound      Int                   @default(0)
+  needsReview      Boolean               @default(false)
+  links            RequirementCaseLink[]
+  revisions        TestCaseRevision[]
+  reviews          TestCaseReview[]
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, number])
+  @@index([projectId, status, needsReview, updatedAt])
+  @@index([ownerId, status])
+  @@index([reviewerId, status])
+}
+
+model RequirementCaseLink {
+  projectId     String      @db.Uuid
+  requirementId String      @db.Uuid
+  testCaseId    String      @db.Uuid
+  requirement   Requirement @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  testCase      TestCase    @relation(fields: [projectId, testCaseId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([testCaseId, requirementId])
+  @@index([projectId, requirementId])
+}
+
+model TestCaseRevision {
+  id               String           @id @default(uuid()) @db.Uuid
+  projectId        String           @db.Uuid
+  testCaseId       String           @db.Uuid
+  testCase         TestCase         @relation(fields: [projectId, testCaseId], references: [projectId, id], onDelete: Cascade)
+  revision         Int
+  snapshot         Json
+  requirementBasis Json
+  reason           String           @default("") @db.VarChar(2000)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  reviews          TestCaseReview[]
+
+  @@unique([testCaseId, revision])
+  @@unique([projectId, testCaseId, revision])
+}
+
+model TestCaseReview {
+  id         String                  @id @default(uuid()) @db.Uuid
+  projectId  String                  @db.Uuid
+  testCaseId String                  @db.Uuid
+  testCase   TestCase                @relation(fields: [projectId, testCaseId], references: [projectId, id], onDelete: Cascade)
+  revision   Int
+  content    TestCaseRevision        @relation(fields: [projectId, testCaseId, revision], references: [projectId, testCaseId, revision], onDelete: Cascade)
+  round      Int
+  action     RequirementReviewAction
+  actorId    String                  @db.Uuid
+  actor      User                    @relation("TestCaseReviewActor", fields: [actorId], references: [id], onDelete: Restrict)
+  reviewerId String                  @db.Uuid
+  reviewer   User                    @relation("TestCaseReviewReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  comment    String                  @default("") @db.VarChar(2000)
+  createdAt  DateTime                @default(now()) @db.Timestamptz(3)
+
+  @@unique([testCaseId, round, action])
+  @@index([projectId, testCaseId, createdAt])
+}
+
+enum ReleaseStatus {
+  PLANNING
+  DEVELOPING
+  TESTING
+  READY
+  RELEASED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  TESTING
+  COMPLETED
+  RETURNED
+  CANCELLED
+}
+
+enum TestRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+enum TestOutcome {
+  PASSED
+  FAILED
+  BLOCKED
+  NOT_APPLICABLE
+}
+
+enum DefectStatus {
+  UNCONFIRMED
+  OPEN
+  FIXING
+  AWAITING_RETEST
+  CLOSED
+  DUPLICATE
+  NOT_A_DEFECT
+  CANNOT_REPRODUCE
+  DEFERRED
+}
+
+enum DefectSeverity {
+  CRITICAL
+  MAJOR
+  MINOR
+  TRIVIAL
+}
+
+model Release {
+  id           String        @id @default(uuid()) @db.Uuid
+  projectId    String        @db.Uuid
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name         String        @db.VarChar(100)
+  description  String        @default("") @db.VarChar(5000)
+  status       ReleaseStatus @default(PLANNING)
+  scopeVersion Int           @default(1)
+  version      Int           @default(1)
+  createdById  String        @db.Uuid
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, name])
+}
+
+model ReleaseItem {
+  id           String  @id @default(uuid()) @db.Uuid
+  projectId    String  @db.Uuid
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  releaseId    String  @db.Uuid
+  workItemId   String  @db.Uuid
+  scopeVersion Int
+  active       Boolean @default(true)
+
+  @@unique([releaseId, scopeVersion, workItemId])
+  @@index([projectId, workItemId, active])
+}
+
+model Build {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @db.Uuid
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  releaseId    String   @db.Uuid
+  scopeVersion Int
+  identifier   String   @db.VarChar(100)
+  codeUrl      String   @default("") @db.VarChar(2000)
+  artifactUrl  String   @default("") @db.VarChar(2000)
+  notes        String   @default("") @db.VarChar(5000)
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, identifier])
+  @@index([projectId, releaseId, createdAt])
+}
+
+model Submission {
+  id               String           @id @default(uuid()) @db.Uuid
+  projectId        String           @db.Uuid
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number           Int
+  title            String           @db.VarChar(200)
+  releaseId        String           @db.Uuid
+  buildId          String           @db.Uuid
+  receiverId       String           @db.Uuid
+  createdById      String           @db.Uuid
+  environment      String           @db.VarChar(2000)
+  selfTest         String           @db.VarChar(5000)
+  changes          String           @db.VarChar(5000)
+  status           SubmissionStatus @default(DRAFT)
+  round            Int              @default(0)
+  version          Int              @default(1)
+  scopeVersion     Int
+  requirementBasis Json
+  scopeSnapshot    Json
+  acceptedAt       DateTime?        @db.Timestamptz(3)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, number])
+  @@index([receiverId, status])
+}
+
+model SubmissionTask {
+  id           String  @id @default(uuid()) @db.Uuid
+  projectId    String  @db.Uuid
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submissionId String  @db.Uuid
+  taskId       String  @db.Uuid
+  task         Task    @relation(fields: [projectId, taskId], references: [projectId, id], onDelete: NoAction, onUpdate: NoAction)
+  active       Boolean @default(false)
+
+  @@unique([submissionId, taskId])
+  @@index([projectId, taskId, active])
+}
+
+model SubmissionReview {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @db.Uuid
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submissionId String   @db.Uuid
+  round        Int
+  action       String   @db.VarChar(30)
+  actorId      String   @db.Uuid
+  reason       String   @db.VarChar(5000)
+  snapshot     Json
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([submissionId, round, action])
+}
+
+model TestRun {
+  id           String        @id @default(uuid()) @db.Uuid
+  projectId    String        @db.Uuid
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submissionId String        @unique @db.Uuid
+  buildId      String        @db.Uuid
+  executorId   String        @db.Uuid
+  status       TestRunStatus @default(PENDING)
+  version      Int           @default(1)
+  passed       Boolean?
+  summary      Json?
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  completedAt  DateTime?     @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@index([executorId, status])
+}
+
+model TestRunItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @db.Uuid
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runId      String   @db.Uuid
+  testCaseId String   @db.Uuid
+  revision   Int
+  snapshot   Json
+  required   Boolean  @default(true)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([runId, testCaseId])
+}
+
+model TestResult {
+  id            String      @id @default(uuid()) @db.Uuid
+  projectId     String      @db.Uuid
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  itemId        String      @db.Uuid
+  attempt       Int
+  outcome       TestOutcome
+  actual        String      @db.VarChar(5000)
+  reason        String      @db.VarChar(5000)
+  evidence      String      @db.VarChar(5000)
+  attachmentIds Json
+  actorId       String      @db.Uuid
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([itemId, attempt])
+}
+
+model Defect {
+  id              String         @id @default(uuid()) @db.Uuid
+  projectId       String         @db.Uuid
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number          Int
+  title           String         @db.VarChar(200)
+  reproduction    String         @db.VarChar(10000)
+  expected        String         @db.VarChar(5000)
+  actual          String         @db.VarChar(5000)
+  environment     String         @db.VarChar(2000)
+  source          String         @db.VarChar(20)
+  severity        DefectSeverity
+  status          DefectStatus   @default(UNCONFIRMED)
+  requirementId   String         @db.Uuid
+  taskId          String?        @db.Uuid
+  foundBuildId    String?        @db.Uuid
+  releaseId       String?        @db.Uuid
+  targetReleaseId String?        @db.Uuid
+  fixedBuildId    String?        @db.Uuid
+  duplicateOfId   String?        @db.Uuid
+  assigneeId      String         @db.Uuid
+  retesterId      String         @db.Uuid
+  createdById     String         @db.Uuid
+  version         Int            @default(1)
+  deferUntil      DateTime?      @db.Date
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, number])
+  @@index([assigneeId, status])
+  @@index([retesterId, status])
+  @@index([projectId, releaseId, severity, status])
+}
+
+model DefectTestLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defectId  String   @db.Uuid
+  resultId  String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([defectId, resultId])
+}
+
+model DefectDisposition {
+  id         String       @id @default(uuid()) @db.Uuid
+  projectId  String       @db.Uuid
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defectId   String       @db.Uuid
+  action     String       @db.VarChar(40)
+  fromStatus DefectStatus
+  toStatus   DefectStatus
+  actorId    String       @db.Uuid
+  reason     String       @db.VarChar(5000)
+  evidence   String       @db.VarChar(5000)
+  buildId    String?      @db.Uuid
+  resultId   String?      @db.Uuid
+  details    Json
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+}
+
+enum TestRecordOutcome {
+  NOT_RUN
+  PASSED
+  FAILED
+}
+
+enum TestRecordType {
+  INITIAL
+  RETEST
+}
+
+model TestRecord {
+  id                  String            @id @default(uuid()) @db.Uuid
+  projectId           String            @db.Uuid
+  project             Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  number              Int
+  testCaseId          String            @db.Uuid
+  caseRevision        Int
+  requirementId       String            @db.Uuid
+  requirementRevision Int
+  cycle               Int
+  type                TestRecordType    @default(INITIAL)
+  outcome             TestRecordOutcome @default(NOT_RUN)
+  snapshot            Json
+  buildId             String?           @db.Uuid
+  environment         String            @db.VarChar(2000)
+  actual              String            @default("") @db.VarChar(5000)
+  evidence            String            @default("") @db.VarChar(5000)
+  attachmentIds       Json              @default("[]")
+  executorId          String            @db.Uuid
+  version             Int               @default(1)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  completedAt         DateTime?         @db.Timestamptz(3)
+
+  @@unique([projectId, id])
+  @@unique([projectId, number])
+  @@index([projectId, requirementId, cycle, testCaseId, createdAt])
+  @@index([projectId, testCaseId, createdAt])
+  @@index([executorId, outcome])
+}
+
+model DefectCaseLink {
+  id         String  @id @default(uuid()) @db.Uuid
+  projectId  String  @db.Uuid
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defectId   String  @db.Uuid
+  testCaseId String  @db.Uuid
+
+  @@unique([defectId, testCaseId])
+}
+
+model DefectRecordLink {
+  id           String  @id @default(uuid()) @db.Uuid
+  projectId    String  @db.Uuid
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  defectId     String  @db.Uuid
+  testRecordId String  @db.Uuid
+
+  @@unique([defectId, testRecordId])
+}

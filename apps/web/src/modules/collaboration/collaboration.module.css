@@ -1,0 +1,210 @@
+.panel {
+  background: #fff;
+  border: 1px solid #e7ece6;
+  border-radius: 16px;
+  padding: 26px;
+  min-width: 0;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.heading > :global(.anticon) {
+  font-size: 30px;
+  color: #739482;
+  background: #f0f5ef;
+  padding: 18px;
+  border-radius: 18px;
+}
+.eyebrow {
+  color: #78927e;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+}
+.heading h2,
+.notificationIntro h2 {
+  font-size: 21px;
+  margin: 8px 0;
+  letter-spacing: -0.5px;
+}
+.heading p,
+.notificationIntro p {
+  color: #7c867e;
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 0 0 14px;
+}
+.composer {
+  background: #f8faf6;
+  border: 1px solid #e9eee5;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0 22px;
+}
+.composer > div:last-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-top: 20px;
+}
+.composer > div:last-child > span,
+.hint {
+  font-size: 12px;
+  color: #899184;
+}
+.avatar {
+  background: #eaf2e7;
+  color: #4c7159;
+  flex-shrink: 0;
+}
+.records article {
+  display: flex;
+  gap: 13px;
+  padding: 20px 0;
+  border-bottom: 1px solid #eef1eb;
+}
+.records article > div:last-child {
+  min-width: 0;
+  flex: 1;
+}
+.records header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.records strong {
+  font-size: 13px;
+}
+.records time,
+.notifications time {
+  color: #92998e;
+  font-size: 11px;
+}
+.records p {
+  margin: 10px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  color: #505b50;
+  line-height: 1.9;
+}
+.upload {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 20px;
+  border: 1px dashed #cddccb;
+  border-radius: 12px;
+  background: #f8fbf5;
+  margin: 10px 0 20px;
+}
+.upload strong {
+  font-size: 13px;
+}
+.upload p {
+  margin: 7px 0 0;
+  color: #83907e;
+  font-size: 12px;
+}
+.files article {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px 0;
+  border-bottom: 1px solid #eef1eb;
+}
+.files article > :global(.anticon) {
+  font-size: 21px;
+  color: #6c8c75;
+}
+.files article > div {
+  flex: 1;
+  min-width: 0;
+}
+.files strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.files small {
+  display: block;
+  color: #8f9889;
+  font-size: 11px;
+  margin-top: 5px;
+}
+.notificationIntro {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.notifications article {
+  display: flex;
+  gap: 12px;
+  padding: 18px 12px;
+  border-bottom: 1px solid #eff2ed;
+  border-radius: 8px;
+}
+.notifications article > div {
+  flex: 1;
+  min-width: 0;
+}
+.notifications a {
+  display: block;
+  color: #475744;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.notifications time {
+  display: block;
+  margin: 8px 0;
+}
+.unread {
+  background: #f6faf2;
+}
+.notificationDot {
+  width: 6px;
+  height: 6px;
+  background: #d4dcd0;
+  border-radius: 50%;
+  margin-top: 9px;
+  flex-shrink: 0;
+}
+.unread .notificationDot {
+  background: #6e9651;
+}
+@media (max-width: 600px) {
+  .panel {
+    padding: 17px;
+  }
+  .heading > :global(.anticon) {
+    display: none;
+  }
+  .heading h2 {
+    font-size: 18px;
+  }
+  .composer > div:last-child {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .files article {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: start;
+  }
+  .files article > :global(.ant-btn) {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

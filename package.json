@@ -1,0 +1,50 @@
+{
+  "name": "myteam",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": ">=24.22.1 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @myteam/contracts build && concurrently -k -n contracts,api,web 'pnpm --filter @myteam/contracts dev' 'pnpm --filter @myteam/api dev' 'pnpm --filter @myteam/web dev'",
+    "build": "pnpm --filter @myteam/contracts build && pnpm --filter @myteam/api build && pnpm --filter @myteam/web build",
+    "typecheck": "pnpm --filter @myteam/contracts build && pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm --filter @myteam/contracts build && vitest run",
+    "test:integration": "pnpm --filter @myteam/contracts build && pnpm --filter @myteam/api build && node --test --test-concurrency=1 apps/api/test/*.integration.mjs",
+    "test:e2e": "pnpm build && playwright test",
+    "check:ci": "node scripts/check-ci.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "db:local:start": "node scripts/local-postgres.mjs start",
+    "db:local:stop": "node scripts/local-postgres.mjs stop",
+    "db:generate": "pnpm --filter @myteam/api db:generate",
+    "db:migrate": "pnpm --filter @myteam/api db:migrate",
+    "db:seed": "pnpm --filter @myteam/api db:seed",
+    "admin:create": "pnpm --filter @myteam/api admin:create",
+    "storage:prune": "pnpm --filter @myteam/api storage:prune",
+    "storage:local:start": "node scripts/local-seaweedfs.mjs start",
+    "storage:local:stop": "node scripts/local-seaweedfs.mjs stop",
+    "storage:init": "pnpm --filter @myteam/api storage:init",
+    "storage:migrate-local": "pnpm --filter @myteam/api storage:migrate-local",
+    "demo:seed": "pnpm --filter @myteam/contracts build && pnpm --filter @myteam/api build && node --env-file=.env scripts/demo-data.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "^1.56.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.0.0",
+    "concurrently": "^9.2.0",
+    "eslint": "10.13.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "globals": "^16.4.0",
+    "jsdom": "^27.0.0",
+    "prettier": "^3.6.0",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "8.72.1",
+    "vitest": "^5.0.0"
+  }
+}

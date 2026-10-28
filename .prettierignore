@@ -1,0 +1,9 @@
+node_modules
+dist
+.tools
+.local
+pnpm-lock.yaml
+apps/api/src/generated
+coverage
+playwright-report
+test-results
