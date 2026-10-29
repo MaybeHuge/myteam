@@ -294,10 +294,10 @@ export function UsersPage({ session }: { session: SessionResponse }) {
           <Form.Item
             name="password"
             label="初始密码"
-            extra="至少 12 位，不会通过站内通知或邮件自动发送。"
+            extra="至少 6 位，不会通过站内通知或邮件自动发送。"
             rules={[
               { required: true, message: '请设置初始密码' },
-              { min: 12, message: '至少需要 12 位' },
+              { min: 6, message: '至少需要 6 位' },
               { max: 128 },
             ]}
           >

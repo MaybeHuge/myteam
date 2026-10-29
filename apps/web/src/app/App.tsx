@@ -14,6 +14,7 @@ import {
   ArrowRightOutlined,
   FolderOpenOutlined,
   HomeOutlined,
+  KeyOutlined,
   LogoutOutlined,
   SearchOutlined,
   TeamOutlined,
@@ -28,7 +29,7 @@ import {
   useNavigate,
   useParams,
 } from 'react-router';
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { InputRef } from 'antd';
 import type { SessionResponse } from '@myteam/contracts';
 import {
@@ -41,6 +42,7 @@ import {
 } from '../api/client';
 import { NotificationCenter } from '../modules/collaboration/NotificationCenter';
 import { LoginPage } from '../modules/identity/LoginPage';
+import { ChangePassword } from '../modules/identity/ChangePassword';
 import { loadProjects, recentProjectsKey } from '../modules/projects/api';
 import { ProjectSwitcher } from '../modules/projects/ProjectSwitcher';
 import { ProjectIcon } from '../modules/projects/presentation';
@@ -71,6 +73,7 @@ function Workspace({ session }: { session: SessionResponse }) {
   const client = useQueryClient();
   const { message } = AntApp.useApp();
   const searchRef = useRef<InputRef>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
   const recent = useQuery({
     queryKey: recentProjectsKey(session.user.id),
     queryFn: ({ signal }) => loadProjects('pageSize=3', signal),
@@ -200,6 +203,14 @@ function Workspace({ session }: { session: SessionResponse }) {
                 {session.user.name.slice(0, 1)}
               </Avatar>
             </Tooltip>
+            <Tooltip title="修改密码">
+              <Button
+                type="text"
+                icon={<KeyOutlined />}
+                aria-label="修改密码"
+                onClick={() => setChangingPassword(true)}
+              />
+            </Tooltip>
             <Tooltip title="退出登录">
               <Button
                 type="text"
@@ -211,6 +222,9 @@ function Workspace({ session }: { session: SessionResponse }) {
             </Tooltip>
           </div>
         </header>
+        {changingPassword && (
+          <ChangePassword session={session} onClose={() => setChangingPassword(false)} />
+        )}
         <main className="workspace-main">
           <Suspense
             fallback={

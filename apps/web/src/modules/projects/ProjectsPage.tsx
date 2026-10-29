@@ -392,14 +392,15 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
           />
         )}
       </div>
-      <ProjectEditor
-        key={editor.project?.id ?? 'new'}
-        open={editor.open}
-        project={editor.project}
-        session={session}
-        onClose={() => setEditor((value) => ({ ...value, open: false }))}
-        onCreated={(id) => navigate(`/projects/${id}`)}
-      />
+      {editor.open && (
+        <ProjectEditor
+          open
+          project={editor.project}
+          session={session}
+          onClose={() => setEditor((value) => ({ ...value, open: false }))}
+          onCreated={(id) => navigate(`/projects/${id}`)}
+        />
+      )}
     </>
   );
 }

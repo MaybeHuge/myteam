@@ -15,7 +15,7 @@
 ./scripts/pnpm.sh install --frozen-lockfile
 ```
 
-首次启动时复制 `.env.example` 为 `.env`，填写 `ADMIN_EMAIL`、`ADMIN_NAME` 和至少 12 位的 `ADMIN_PASSWORD`，同时填写 `S3_ACCESS_KEY_ID`、至少 12 位的 `S3_SECRET_ACCESS_KEY` 及资源桶配置。已有 `.env` 不要覆盖；不要将实际凭据提交到仓库。
+首次启动时复制 `.env.example` 为 `.env`，填写 `ADMIN_EMAIL`、`ADMIN_NAME` 和至少 6 位的 `ADMIN_PASSWORD`，同时填写 `S3_ACCESS_KEY_ID`、至少 12 位的 `S3_SECRET_ACCESS_KEY` 及资源桶配置。已有 `.env` 不要覆盖；不要将实际凭据提交到仓库。
 
 准备 PostgreSQL 和兼容 S3 的资源存储。`.env.example` 使用本机 PostgreSQL 和 SeaweedFS 的示例地址；请根据实际环境修改连接和凭据。
 
@@ -52,7 +52,7 @@ docker run -d --name seaweedfs --restart unless-stopped \
 
 ## 当前可以做什么
 
-1. 管理员在账号管理中创建普通账号；不会自动发送邮件或密码。
+1. 管理员在账号管理中创建普通账号；不会自动发送邮件或密码。登录后可从顶部的“修改密码”入口修改自己的密码。
 2. 管理员创建项目并成为主负责人，设置简介、主题、图标和日期。
 3. 在成员与权限页通过下拉框选择已有账号，支持搜索姓名/邮箱，分配一个或多个项目角色；已加入和已停用的账号会自动排除。
 4. 在项目设置中移交主负责人；原负责人的角色保留，可再单独调整。

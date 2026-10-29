@@ -9,6 +9,7 @@ import * as argon2 from 'argon2';
 import type { Request, Response, CookieOptions } from 'express';
 import {
   createUserSchema,
+  changePasswordSchema,
   loginSchema,
   userQuerySchema,
   userSchema,
@@ -112,9 +113,10 @@ export class IdentityService {
     await this.db.$transaction(async (tx) => {
       // 与账号停用串行化，防止停用并发时创建新会话。
       const locked = await tx.$queryRaw<
-        Array<{ active: boolean }>
-      >`SELECT active FROM "User" WHERE id = ${user.id}::uuid FOR UPDATE`;
-      if (!locked[0]?.active) throw new ApiException(401, 'UNAUTHENTICATED', '邮箱或密码错误');
+        Array<{ active: boolean; passwordHash: string }>
+      >`SELECT active, "passwordHash" FROM "User" WHERE id = ${user.id}::uuid FOR UPDATE`;
+      if (!locked[0]?.active || locked[0].passwordHash !== user.passwordHash)
+        throw new ApiException(401, 'UNAUTHENTICATED', '邮箱或密码错误');
       if (previous) await tx.session.deleteMany({ where: { tokenHash: digest(previous) } });
       await tx.session.create({
         data: { tokenHash: digest(token), csrfToken, userId: user.id, expiresAt },
@@ -131,6 +133,48 @@ export class IdentityService {
     res.cookie(this.config.SESSION_COOKIE, token, { ...this.cookieOptions(), expires: expiresAt });
     res.cookie(this.csrfCookie(), csrfToken, { ...this.cookieOptions(), expires: expiresAt });
     return { user: userSchema.parse(user), csrfToken, expiresAt: expiresAt.toISOString() };
+  }
+  async changePassword(input: unknown, req: Request) {
+    const session = await this.requireWrite(req);
+    const data = changePasswordSchema.parse(input);
+    const ipHash = digest(req.ip ?? 'unknown');
+    const since = new Date(Date.now() - 15 * 60000);
+    const [emailFailures, ipFailures] = await Promise.all([
+      this.db.loginAttempt.count({
+        where: { email: session.user.email, createdAt: { gte: since } },
+      }),
+      this.db.loginAttempt.count({ where: { ipHash, createdAt: { gte: since } } }),
+    ]);
+    if (emailFailures >= 5 || ipFailures >= 50)
+      throw new ApiException(429, 'RATE_LIMITED', '尝试过多，请 15 分钟后重试');
+    if (!(await argon2.verify(session.user.passwordHash, data.currentPassword))) {
+      await this.db.loginAttempt.create({ data: { email: session.user.email, ipHash } });
+      throw new ApiException(422, 'BUSINESS_RULE_VIOLATION', '原密码不正确');
+    }
+    const passwordHash = await argon2.hash(data.newPassword, { type: argon2.argon2id });
+    await this.db.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ active: boolean; passwordHash: string }>>`
+        SELECT active, "passwordHash" FROM "User" WHERE id = ${session.userId}::uuid FOR UPDATE`;
+      if (!locked[0]?.active || locked[0].passwordHash !== session.user.passwordHash)
+        throw new ApiException(409, 'CONFLICT', '账号状态或密码已变更，请重新登录');
+      const validSession = await tx.session.findUnique({ where: { id: session.id } });
+      if (!validSession || validSession.expiresAt.getTime() <= Date.now())
+        throw new ApiException(401, 'UNAUTHENTICATED', '登录已失效，请重新登录');
+      await tx.user.update({
+        where: { id: session.userId },
+        data: { passwordHash, version: { increment: 1 } },
+      });
+      await tx.session.deleteMany({ where: { userId: session.userId, id: { not: session.id } } });
+      await tx.activityLog.create({
+        data: {
+          actorId: session.userId,
+          targetId: session.userId,
+          action: 'identity.password.changed',
+          requestId: req.requestId,
+        },
+      });
+    });
+    return { success: true };
   }
   async me(req: Request) {
     const session = await this.requireSession(req);

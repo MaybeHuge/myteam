@@ -505,13 +505,9 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
           },
         ]}
       />
-      <ProjectEditor
-        key={project.id}
-        open={!!editing}
-        project={editing ?? project}
-        session={session}
-        onClose={() => setEditing(null)}
-      />
+      {editing && (
+        <ProjectEditor open project={editing} session={session} onClose={() => setEditing(null)} />
+      )}
       <Modal
         open={!!stateAction}
         title={

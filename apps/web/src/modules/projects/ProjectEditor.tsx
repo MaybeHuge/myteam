@@ -103,13 +103,6 @@ export function ProjectEditor({
           </Space>
         </div>
       }
-      afterOpenChange={(visible) => {
-        if (!visible) {
-          form.resetFields();
-          setMemberSearch('');
-          mutation.reset();
-        }
-      }}
     >
       <div className={styles.editorIntro}>
         <ProjectIcon project={{ color, icon }} size="large" />
@@ -128,7 +121,6 @@ export function ProjectEditor({
       )}
       <Form
         form={form}
-        clearOnDestroy
         layout="vertical"
         requiredMark="optional"
         initialValues={initial}

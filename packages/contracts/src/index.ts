@@ -130,7 +130,11 @@ export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().max(254).pipe(z.email()),
   password: z.string().min(1).max(128),
 });
-export const passwordSchema = z.string().min(12, '密码至少 12 位').max(128);
+export const passwordSchema = z.string().min(6, '密码至少 6 位').max(128);
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, '请输入原密码').max(128),
+  newPassword: passwordSchema,
+});
 export const userSchema = z.object({
   id: z.uuid(),
   email: z.email(),

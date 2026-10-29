@@ -14,6 +14,10 @@ export class IdentityController {
   login(@Body() input: unknown, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     return this.identity.login(input, req, res);
   }
+  @Post('auth/password')
+  changePassword(@Body() input: unknown, @Req() req: Request) {
+    return this.identity.changePassword(input, req);
+  }
   @Get('auth/me')
   me(@Req() req: Request) {
     return this.identity.me(req);

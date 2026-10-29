@@ -6,6 +6,7 @@ test('项目与成员完整交互：创建账号/项目、启动、只读隔离�
   browser,
 }) => {
   test.setTimeout(90000);
+  page.setDefaultTimeout(12000);
   const memberStamp = Date.now().toString(36);
   const memberEmail = `new-member-${memberStamp}@browser-e2e.test`;
   const memberName = `林小禾 ${memberStamp}`;
@@ -70,6 +71,38 @@ test('项目与成员完整交互：创建账号/项目、启动、只读隔离�
   await page.getByRole('button', { name: '启动项目', exact: true }).click();
   await page.getByRole('button', { name: '确认启动', exact: true }).click();
   await expect(page.getByRole('button', { name: '暂停项目', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '项目设置', exact: true }).click();
+  let settings = page.getByRole('dialog', { name: /项目设置/ });
+  await expect(settings.getByLabel('项目名称', { exact: true })).toHaveValue('下一站，协作体验');
+  await expect(settings.getByLabel(/^项目简介/)).toHaveValue(
+    '从清晰的目标与细腻的体验开始，让每个伙伴在项目里找到自己的位置。',
+  );
+  await expect(settings.getByLabel(/^计划开始/)).toHaveValue('2026-10-27');
+  await expect(settings.getByLabel(/^计划结束/)).toHaveValue('2026-12-31');
+  await expect(settings.getByRole('button', { name: '选择玫瑰主题' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(
+    settings.getByText('浏览器测试管理员 · browser-admin@example.test', { exact: true }),
+  ).toBeVisible();
+  await expect(settings.getByText('协作', { exact: true })).toBeVisible();
+  await settings.getByLabel('项目名称', { exact: true }).fill('尚未保存的名称');
+  await settings.getByRole('button', { name: /^取\s*消$/ }).click();
+  await page.getByRole('button', { name: '项目设置', exact: true }).click();
+  settings = page.getByRole('dialog', { name: /项目设置/ });
+  await expect(settings.getByLabel('项目名称', { exact: true })).toHaveValue('下一站，协作体验');
+  await settings.getByLabel(/^项目简介/).fill('已更新的项目简介');
+  await settings.getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(settings).toHaveCount(0);
+  await page.getByRole('button', { name: '项目设置', exact: true }).click();
+  settings = page.getByRole('dialog', { name: /项目设置/ });
+  await expect(settings.getByLabel(/^项目简介/)).toHaveValue('已更新的项目简介');
+  await expect(settings.getByRole('button', { name: '选择玫瑰主题' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await settings.getByRole('button', { name: /^取\s*消$/ }).click();
   await page.getByRole('tab', { name: /成员与权限/ }).click();
   await page.getByRole('button', { name: '添加成员', exact: true }).click();
   const picker = page.getByRole('combobox', { name: '选择成员', exact: true });

@@ -70,6 +70,49 @@ const status = (agent, csrf, id, body, key = randomUUID()) =>
     .set('Idempotency-Key', key)
     .send(body);
 
+test('六位密码可创建和修改，修改密码验证原密码并撤销其他会话', async () => {
+  const administrator = await signIn(admin);
+  const userEmail = email('password-change');
+  const create = (password) =>
+    administrator.agent
+      .post('/api/v1/users')
+      .set('Origin', origin)
+      .set('X-CSRF-Token', administrator.csrfToken)
+      .set('Idempotency-Key', randomUUID())
+      .send({ name: '密码测试成员', email: userEmail, password });
+  await create('12345').expect(400);
+  const created = await create('123456').expect(201);
+  const user = await db.user.findUniqueOrThrow({ where: { id: created.body.id } });
+  const first = await signIn(user, '123456');
+  const second = await signIn(user, '123456');
+  assert.equal(first.result.status, 201);
+  assert.equal(second.result.status, 201);
+  const change = (body, csrf = first.csrfToken) =>
+    first.agent
+      .post('/api/v1/auth/password')
+      .set('Origin', origin)
+      .set('X-CSRF-Token', csrf)
+      .send(body);
+  await change({ currentPassword: '123456', newPassword: '654321' }, 'bad').expect(403);
+  await change({ currentPassword: '123456', newPassword: '12345' }).expect(400);
+  await change({ currentPassword: 'incorrect', newPassword: '654321' }).expect(422);
+  await first.agent.get('/api/v1/auth/me').expect(200);
+  await second.agent.get('/api/v1/auth/me').expect(200);
+  await change({ currentPassword: '123456', newPassword: '654321' }).expect(201);
+  await first.agent.get('/api/v1/auth/me').expect(200);
+  await second.agent.get('/api/v1/auth/me').expect(401);
+  assert.equal((await signIn(user, '123456')).result.status, 401);
+  assert.equal((await signIn(user, '654321')).result.status, 201);
+  const activity = await db.activityLog.findFirstOrThrow({
+    where: { targetId: user.id, action: 'identity.password.changed' },
+  });
+  assert.equal(JSON.stringify(activity).includes('654321'), false);
+  await db.loginAttempt.deleteMany({ where: { email: userEmail } });
+  for (let i = 0; i < 5; i++)
+    await change({ currentPassword: 'incorrect', newPassword: '654321' }).expect(422);
+  await change({ currentPassword: '654321', newPassword: 'another' }).expect(429);
+  await db.loginAttempt.deleteMany({ where: { email: userEmail } });
+});
 test('健康检查区分存活与数据库就绪', async () => {
   await request(http).get('/api/v1/health/live').expect(200);
   const ready = await request(http).get('/api/v1/health/ready').expect(200);

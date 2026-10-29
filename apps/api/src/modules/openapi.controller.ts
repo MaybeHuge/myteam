@@ -22,6 +22,7 @@ import {
   sessionResponseSchema,
   userStatusSchema,
   createUserSchema,
+  changePasswordSchema,
   createProjectSchema,
   updateProjectSchema,
   projectSchema,
@@ -535,6 +536,18 @@ export class OpenApiController {
             responses: {
               '201': response(jsonSchema(sessionResponseSchema)),
               '401': response(jsonSchema(errorResponseSchema)),
+            },
+          },
+        },
+        '/auth/password': {
+          post: {
+            summary: '修改当前账号密码并撤销其他会话',
+            security: [{ session: [], csrf: [] }],
+            requestBody: body(jsonSchema(changePasswordSchema)),
+            responses: {
+              '201': response({ type: 'object', properties: { success: { type: 'boolean' } } }),
+              '400': response(jsonSchema(errorResponseSchema)),
+              '422': response(jsonSchema(errorResponseSchema)),
             },
           },
         },

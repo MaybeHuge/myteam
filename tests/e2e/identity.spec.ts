@@ -56,3 +56,46 @@ test('窄屏登录表单可操作，错误密码有明确反馈', async ({ page 
     true,
   );
 });
+
+test('普通成员使用六位密码登录并修改密码', async ({ page, browser }) => {
+  test.setTimeout(90000);
+  await page.goto('/');
+  await page.getByLabel('邮箱', { exact: true }).fill('browser-admin@example.test');
+  await page.getByLabel('密码', { exact: true }).fill(password);
+  await page.getByRole('button', { name: '登录工作空间' }).click();
+  await page.getByRole('link', { name: '账号管理', exact: true }).click();
+  await page.getByRole('button', { name: '新建账号', exact: true }).click();
+  const email = `change-password-${Date.now().toString(36)}@browser-e2e.test`;
+  await page.getByLabel('姓名', { exact: true }).fill('密码测试账号');
+  await page.getByLabel('登录邮箱', { exact: true }).fill(email);
+  await page.getByLabel('初始密码', { exact: true }).fill('123456');
+  await page.getByRole('button', { name: '创建账号', exact: true }).click();
+  await expect(page.getByText('账号已创建，可以将该成员加入项目')).toBeVisible();
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const member = await context.newPage();
+  await member.goto('/');
+  await member.getByLabel('邮箱', { exact: true }).fill(email);
+  await member.getByLabel('密码', { exact: true }).fill('123456');
+  await member.getByRole('button', { name: '登录工作空间' }).click();
+  await member.getByRole('button', { name: '修改密码', exact: true }).click();
+  const dialog = member.getByRole('dialog', { name: '修改密码', exact: true });
+  await dialog.getByLabel('原密码', { exact: true }).fill('wrong-password');
+  await dialog.getByLabel('新密码', { exact: true }).fill('654321');
+  await dialog.getByLabel('确认新密码', { exact: true }).fill('654321');
+  await dialog.getByRole('button', { name: '保存新密码', exact: true }).click();
+  await expect(dialog.getByText('原密码不正确')).toBeVisible();
+  await dialog.getByLabel('原密码', { exact: true }).fill('123456');
+  await dialog.getByLabel('确认新密码', { exact: true }).fill('different');
+  await dialog.getByRole('button', { name: '保存新密码', exact: true }).click();
+  await expect(dialog.getByText('两次输入的密码不一致')).toBeVisible();
+  await dialog.getByLabel('确认新密码', { exact: true }).fill('654321');
+  await dialog.getByRole('button', { name: '保存新密码', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(member.getByText('密码已修改，其他登录设备已退出')).toBeVisible();
+  await member.getByRole('button', { name: '退出登录' }).click();
+  await member.getByLabel('邮箱', { exact: true }).fill(email);
+  await member.getByLabel('密码', { exact: true }).fill('654321');
+  await member.getByRole('button', { name: '登录工作空间' }).click();
+  await expect(member.getByRole('button', { name: '修改密码', exact: true })).toBeVisible();
+  await context.close();
+});
