@@ -468,18 +468,20 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
             children: <ProjectTestCases project={project} session={session} />,
           },
           {
+            key: 'releases',
+            label: '版本与构建',
+            children: <ProjectQuality mode="releases" project={project} session={session} />,
+          },
+          {
             key: 'records',
             label: '测试记录',
             children: <ProjectTestRecords project={project} session={session} />,
           },
-          ...(['releases', 'defects'] as const).map((mode) => ({
-            key: mode,
-            label: {
-              releases: '版本与构建',
-              defects: '缺陷管理',
-            }[mode],
-            children: <ProjectQuality mode={mode} project={project} session={session} />,
-          })),
+          {
+            key: 'defects',
+            label: '缺陷管理',
+            children: <ProjectQuality mode="defects" project={project} session={session} />,
+          },
           {
             key: 'collaboration',
             label: '讨论与附件',

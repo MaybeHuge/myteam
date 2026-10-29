@@ -161,6 +161,14 @@ test('轻量测试闭环：开发完成任务、用例发起记录、截图、�
       'base64',
     ),
   });
+  const thumbnail = create.locator('.ant-upload-list-item-thumbnail img');
+  await expect(thumbnail).toBeVisible();
+  await expect
+    .poll(() => thumbnail.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+  const thumbnailBox = await thumbnail.boundingBox();
+  expect(thumbnailBox?.width).toBeGreaterThanOrEqual(90);
+  expect(thumbnailBox?.height).toBeGreaterThanOrEqual(65);
   await qa.route(
     '**/quality/records/*/finish',
     (route) => route.fulfill({ status: 500, contentType: 'application/json', body: '{}' }),
@@ -181,6 +189,15 @@ test('轻量测试闭环：开发完成任务、用例发起记录、截图、�
     await page.request.get(`/api/v1/projects/${p}/quality/records/${firstRecord}`)
   ).json();
   expect(record.attachmentIds).toHaveLength(1);
+  const recordDetail = qa.getByRole('dialog', { name: '测试记录详情', exact: true });
+  const screenshot = recordDetail.getByRole('img', { name: '验证码失败截图.png' });
+  await expect(screenshot).toBeVisible();
+  await expect
+    .poll(() => screenshot.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+  await screenshot.click();
+  await expect(qa.locator('.ant-image-preview-img')).toBeVisible();
+  await qa.keyboard.press('Escape');
   const bug = record.defects[0].id;
   await qa.goto(`/projects/${p}?tab=defects&defect=${bug}`);
   await qa.getByRole('tab', { name: '关联与处理记录', exact: true }).click();
@@ -190,8 +207,8 @@ test('轻量测试闭环：开发完成任务、用例发起记录、截图、�
   await act(dev, '开始修复');
   await dev.getByRole('button', { name: '提交修复', exact: true }).click();
   const fix = dev.getByRole('dialog', { name: '提交修复', exact: true });
-  await fix.getByLabel('修复证据说明', { exact: true }).fill('补齐验证码失效逻辑');
-  await fix.getByLabel('修复说明', { exact: true }).fill('修复重复使用');
+  await expect(fix.getByLabel('修复证据说明（选填）', { exact: true })).toBeVisible();
+  await expect(fix.getByLabel('修复说明（选填）', { exact: true })).toBeVisible();
   await fix.getByRole('button', { name: '提交修复', exact: true }).click();
   await expect(fix).toHaveCount(0);
   await qa.reload();
@@ -320,12 +337,48 @@ test('报告缺陷分步填写并查看分区详情', async ({ page }) => {
   await expect(modal.getByLabel('缺陷标题')).toHaveValue(`登录失败 ${stamp}`);
   await modal.getByRole('button', { name: '下一步', exact: true }).click();
   await expect(modal.getByLabel('复现步骤')).toHaveValue('输入正确账号后点击登录');
+  const image = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7ioAAAAASUVORK5CYII=',
+    'base64',
+  );
+  await modal.locator('input[type=file]').setInputFiles([
+    { name: '截图一.png', mimeType: 'image/png', buffer: image },
+    { name: '截图二.png', mimeType: 'image/png', buffer: image },
+  ]);
+  await expect(modal.locator('.ant-upload-list-item')).toHaveCount(2);
+  let uploads = 0;
+  await page.route('**/collaboration/DEFECT/*/attachments?*', async (route) => {
+    if (++uploads === 2)
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+    else await route.continue();
+  });
+  await modal.getByRole('button', { name: '报告缺陷', exact: true }).click();
+  await expect(modal.getByText('缺陷已创建，基本信息已锁定，可重试上传图片。')).toBeVisible();
+  await expect(modal.getByText('服务暂时无法处理请求', { exact: true })).toBeVisible();
+  await page.unroute('**/collaboration/DEFECT/*/attachments?*');
   await modal.getByRole('button', { name: '报告缺陷', exact: true }).click();
   await expect(modal).toHaveCount(0);
   const detail = page.getByRole('dialog', { name: '缺陷详情', exact: true });
   await expect(detail.getByRole('heading', { name: `登录失败 ${stamp}` })).toBeVisible();
   await expect(detail.getByRole('heading', { name: '问题描述' })).toBeVisible();
   await expect(detail.getByRole('heading', { name: '处理概览' })).toBeVisible();
+  await expect(detail.getByRole('img', { name: '截图一.png' })).toBeVisible();
+  await expect(detail.getByRole('img', { name: '截图二.png' })).toBeVisible();
+  await expect
+    .poll(() =>
+      detail
+        .getByRole('img', { name: '截图一.png' })
+        .evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBeGreaterThan(0);
+  await detail.getByRole('img', { name: '截图一.png' }).click();
+  await expect(page.locator('.ant-image-preview-img')).toBeVisible();
+  await page.keyboard.press('Escape');
+  const defectId = new URL(page.url()).searchParams.get('defect');
+  const attachments = await (
+    await page.request.get(`/api/v1/projects/${p}/collaboration/DEFECT/${defectId}/attachments`)
+  ).json();
+  expect(attachments.total).toBe(2);
   await detail.getByRole('tab', { name: '关联与处理记录' }).click();
   await expect(detail.getByText('未关联测试记录')).toBeVisible();
   await detail.getByRole('tab', { name: '问题详情' }).click();

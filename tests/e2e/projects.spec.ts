@@ -5,7 +5,7 @@ test('项目与成员完整交互：创建账号/项目、启动、只读隔离�
   page,
   browser,
 }) => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   const memberStamp = Date.now().toString(36);
   const memberEmail = `new-member-${memberStamp}@browser-e2e.test`;
   const memberName = `林小禾 ${memberStamp}`;
@@ -106,6 +106,33 @@ test('项目与成员完整交互：创建账号/项目、启动、只读隔离�
   await expect(page.getByText('没有匹配的可添加账号', { exact: true })).toBeVisible();
   await picker.press('Escape');
   await page.getByRole('button', { name: '取消', exact: true }).click();
+  await member.getByRole('button', { name: '调整角色', exact: true }).click();
+  let roles = page.getByRole('dialog', { name: '调整项目角色' });
+  await expect(roles.getByRole('checkbox', { name: '只读', exact: true })).toBeChecked();
+  await expect(roles.getByRole('checkbox', { name: '开发', exact: true })).not.toBeChecked();
+  await roles.getByRole('checkbox', { name: '产品', exact: true }).check();
+  await roles.getByRole('button', { name: '取消', exact: true }).click();
+  await member.getByRole('button', { name: '调整角色', exact: true }).click();
+  roles = page.getByRole('dialog', { name: '调整项目角色' });
+  await expect(roles.getByRole('checkbox', { name: '只读', exact: true })).toBeChecked();
+  await expect(roles.getByRole('checkbox', { name: '产品', exact: true })).not.toBeChecked();
+  await roles.getByRole('checkbox', { name: '产品', exact: true }).check();
+  await roles.getByRole('button', { name: '保存角色', exact: true }).click();
+  await expect(member.getByText('产品', { exact: true })).toBeVisible();
+  await member.getByRole('button', { name: '调整角色', exact: true }).click();
+  roles = page.getByRole('dialog', { name: '调整项目角色' });
+  await expect(roles.getByRole('checkbox', { name: '只读', exact: true })).toBeChecked();
+  await expect(roles.getByRole('checkbox', { name: '产品', exact: true })).toBeChecked();
+  await roles.getByRole('checkbox', { name: '产品', exact: true }).uncheck();
+  await roles.getByRole('button', { name: '保存角色', exact: true }).click();
+  await expect(member.getByText('产品', { exact: true })).toHaveCount(0);
+  const owner = page.getByRole('row').filter({ hasText: 'browser-admin@example.test' });
+  await owner.getByRole('button', { name: '调整角色', exact: true }).click();
+  roles = page.getByRole('dialog', { name: '调整项目角色' });
+  await expect(roles.getByRole('checkbox', { name: '负责人', exact: true })).toBeChecked();
+  await expect(roles.getByRole('checkbox', { name: '负责人', exact: true })).toBeDisabled();
+  await expect(roles.getByRole('checkbox', { name: '只读', exact: true })).not.toBeChecked();
+  await roles.getByRole('button', { name: '取消', exact: true }).click();
   await page.screenshot({
     path: 'test-results/project-members-polished.png',
     fullPage: true,

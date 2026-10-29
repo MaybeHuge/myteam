@@ -78,6 +78,113 @@ function RolePicker({
   );
 }
 
+function MemberDrawer({
+  project,
+  session,
+  member,
+  onClose,
+}: {
+  project: Project;
+  session: SessionResponse;
+  member?: ProjectMember;
+  onClose: () => void;
+}) {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const command = useProjectCommand(session, () => {
+    void message.success(member ? '项目角色已更新' : '成员已加入项目');
+    onClose();
+  });
+  return (
+    <Drawer
+      open
+      onClose={onClose}
+      size={540}
+      destroyOnHidden
+      title={
+        <span className={styles.drawerTitle}>
+          <UserAddOutlined />
+          {member ? '调整项目角色' : '添加项目成员'}
+        </span>
+      }
+      footer={
+        <div className={styles.drawerFooter}>
+          <span>每一个角色，都有清晰的责任</span>
+          <Space>
+            <Button aria-label="取消" onClick={onClose}>
+              取消
+            </Button>
+            <Button
+              aria-label={member ? '保存角色' : '添加到项目'}
+              type="primary"
+              icon={!member ? <PlusOutlined aria-hidden /> : undefined}
+              loading={command.isPending}
+              onClick={() => form.submit()}
+            >
+              {member ? '保存角色' : '添加到项目'}
+            </Button>
+          </Space>
+        </div>
+      }
+    >
+      <p className={styles.drawerDescription}>
+        {member ? (
+          <>
+            为 <strong>{member.user.name}</strong> 选择在「{project.name}」中的协作角色。
+          </>
+        ) : (
+          '从已有账号中选择伙伴，支持按姓名或邮箱搜索。新账号可由系统管理员在账号管理中创建。'
+        )}
+      </p>
+      {command.isError && (
+        <Alert
+          className={styles.inlineAlert}
+          type="error"
+          showIcon
+          title={errorMessage(command.error)}
+        />
+      )}
+      <Form
+        layout="vertical"
+        form={form}
+        initialValues={member ? { roles: member.roles } : { roles: ['DEVELOPER'] }}
+        onFinish={(values: { email?: string; roles: ProjectRole[] }) =>
+          command.mutate({
+            path: member
+              ? `/projects/${project.id}/members/${member.user.id}/roles`
+              : `/projects/${project.id}/members`,
+            input: member ? { roles: values.roles, version: member.version } : values,
+          })
+        }
+      >
+        {!member && (
+          <Form.Item
+            name="email"
+            label="选择成员"
+            extra="仅显示尚未加入本项目的可用账号。"
+            rules={[{ required: true, message: '请选择要添加的成员' }]}
+          >
+            <MemberSelect projectId={project.id} userId={session.user.id} />
+          </Form.Item>
+        )}
+        <Form.Item
+          name="roles"
+          label="项目角色"
+          rules={[{ required: true, type: 'array', min: 1, message: '至少选择一个角色' }]}
+        >
+          <RolePicker protectOwner={member?.user.id === project.owner.id} />
+        </Form.Item>
+        {member?.user.id === project.owner.id && (
+          <div className={styles.permissionNote}>
+            <CrownOutlined />
+            <span>主负责人必须保留负责人角色；如需移交，请在项目设置中更换负责人。</span>
+          </div>
+        )}
+      </Form>
+    </Drawer>
+  );
+}
+
 export function ProjectMembers({
   project,
   session,
@@ -96,7 +203,6 @@ export function ProjectMembers({
       return next;
     });
   const [dialog, setDialog] = useState<{ open: boolean; member?: ProjectMember }>({ open: false });
-  const [form] = Form.useForm();
   const { message } = App.useApp();
   const navigate = useNavigate();
   const canManage = project.allowedActions.includes('manageMembers');
@@ -105,10 +211,6 @@ export function ProjectMembers({
     queryFn: ({ signal }) => loadMembers(project.id, page, 20, signal, q),
   });
   const data = members.isError ? undefined : members.data;
-  const command = useProjectCommand(session, () => {
-    void message.success(dialog.member ? '项目角色已更新' : '成员已加入项目');
-    setDialog((value) => ({ ...value, open: false }));
-  });
   const remove = useProjectCommand(session, () => {
     void message.success('成员已移出项目');
   });
@@ -127,8 +229,6 @@ export function ProjectMembers({
             type="primary"
             icon={<UserAddOutlined aria-hidden />}
             onClick={() => {
-              form.resetFields();
-              command.reset();
               setDialog({ open: true });
             }}
           >
@@ -290,105 +390,14 @@ export function ProjectMembers({
           ]}
         />
       )}
-      <Drawer
-        key={dialog.member?.user.id ?? 'add'}
-        open={dialog.open}
-        onClose={() => setDialog((value) => ({ ...value, open: false }))}
-        size={540}
-        destroyOnHidden
-        title={
-          <span className={styles.drawerTitle}>
-            <UserAddOutlined />
-            {dialog.member ? '调整项目角色' : '添加项目成员'}
-          </span>
-        }
-        afterOpenChange={(open) => {
-          if (!open) {
-            form.resetFields();
-            command.reset();
-          }
-        }}
-        footer={
-          <div className={styles.drawerFooter}>
-            <span>每一个角色，都有清晰的责任</span>
-            <Space>
-              <Button
-                aria-label="取消"
-                onClick={() => setDialog((value) => ({ ...value, open: false }))}
-              >
-                取消
-              </Button>
-              <Button
-                aria-label={dialog.member ? '保存角色' : '添加到项目'}
-                type="primary"
-                icon={!dialog.member ? <PlusOutlined aria-hidden /> : undefined}
-                loading={command.isPending}
-                onClick={() => form.submit()}
-              >
-                {dialog.member ? '保存角色' : '添加到项目'}
-              </Button>
-            </Space>
-          </div>
-        }
-      >
-        <p className={styles.drawerDescription}>
-          {dialog.member ? (
-            <>
-              为 <strong>{dialog.member.user.name}</strong> 选择在「{project.name}」中的协作角色。
-            </>
-          ) : (
-            '从已有账号中选择伙伴，支持按姓名或邮箱搜索。新账号可由系统管理员在账号管理中创建。'
-          )}
-        </p>
-        {command.isError && (
-          <Alert
-            className={styles.inlineAlert}
-            type="error"
-            showIcon
-            title={errorMessage(command.error)}
-          />
-        )}
-        <Form
-          layout="vertical"
-          form={form}
-          clearOnDestroy
-          initialValues={dialog.member ? { roles: dialog.member.roles } : { roles: ['DEVELOPER'] }}
-          onFinish={(values: { email?: string; roles: ProjectRole[] }) =>
-            command.mutate({
-              path: dialog.member
-                ? `/projects/${project.id}/members/${dialog.member.user.id}/roles`
-                : `/projects/${project.id}/members`,
-              input: dialog.member
-                ? { roles: values.roles, version: dialog.member.version }
-                : values,
-            })
-          }
-        >
-          {!dialog.member && (
-            <Form.Item
-              name="email"
-              label="选择成员"
-              extra="仅显示尚未加入本项目的可用账号。"
-              rules={[{ required: true, message: '请选择要添加的成员' }]}
-            >
-              <MemberSelect projectId={project.id} userId={session.user.id} />
-            </Form.Item>
-          )}
-          <Form.Item
-            name="roles"
-            label="项目角色"
-            rules={[{ required: true, type: 'array', min: 1, message: '至少选择一个角色' }]}
-          >
-            <RolePicker protectOwner={dialog.member?.user.id === project.owner.id} />
-          </Form.Item>
-          {dialog.member?.user.id === project.owner.id && (
-            <div className={styles.permissionNote}>
-              <CrownOutlined />
-              <span>主负责人必须保留负责人角色；如需移交，请在项目设置中更换负责人。</span>
-            </div>
-          )}
-        </Form>
-      </Drawer>
+      {dialog.open && (
+        <MemberDrawer
+          project={project}
+          session={session}
+          member={dialog.member}
+          onClose={() => setDialog({ open: false })}
+        />
+      )}
     </section>
   );
 }

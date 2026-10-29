@@ -1,12 +1,14 @@
-import { useState } from 'react';
-import { App, Alert, Button, Collapse, Form, Input, Modal, Select, Steps } from 'antd';
+import { useRef, useState } from 'react';
+import { App, Alert, Button, Collapse, Form, Input, Modal, Select, Steps, Upload } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import type { UploadFile } from 'antd';
 import {
   createBuildSchema,
   qualityLabels,
   type Project,
   type SessionResponse,
 } from '@myteam/contracts';
-import { errorMessage } from '../../api/client';
+import { errorMessage, request } from '../../api/client';
 import { useProjectCommand } from '../projects/api';
 import { QualityPicker } from './QualityPicker';
 import styles from './quality.module.css';
@@ -44,15 +46,22 @@ export function QualityModal({
 }) {
   const [form] = Form.useForm();
   const [step, setStep] = useState(0);
-  const { message } = App.useApp();
-  const command = useProjectCommand<{ id: string }>(session, (r) => {
-    void message.success('记录已保存');
-    onSaved(r.id, op.entity);
-    onClose();
-  });
+  const [files, setFiles] = useState<UploadFile[]>([]);
+  const [createdId, setCreatedId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const uploadKeys = useRef(new Map<string, { key: string; done: boolean }>());
   const create = op.action === 'create';
   const edit = create || op.action === 'update';
   const defectCreate = create && op.entity === 'defects';
+  const { message } = App.useApp();
+  const command = useProjectCommand<{ id: string }>(session, (r) => {
+    if (!defectCreate) {
+      void message.success('记录已保存');
+      onSaved(r.id, op.entity);
+      onClose();
+    }
+  });
   const title = create
     ? { releases: '新建版本', builds: '登记构建', defects: '报告缺陷' }[op.entity]
     : actionLabels[op.action];
@@ -74,12 +83,70 @@ export function QualityModal({
       <Input.TextArea rows={3} maxLength={max} />
     </Form.Item>
   );
+  const close = () => {
+    if (uploading || command.isPending) return;
+    if (createdId) onSaved(createdId, op.entity);
+    onClose();
+  };
+  const saveDefect = async (body: Record<string, unknown>) => {
+    setUploading(true);
+    setUploadError('');
+    try {
+      const id =
+        createdId ??
+        (
+          await command.mutateAsync({
+            path: `/projects/${project.id}/quality/defects`,
+            input: body,
+          })
+        ).id;
+      if (!createdId) setCreatedId(id);
+      for (const item of files) {
+        let entry = uploadKeys.current.get(item.uid);
+        if (!entry) {
+          entry = { key: crypto.randomUUID(), done: false };
+          uploadKeys.current.set(item.uid, entry);
+        }
+        if (entry.done) continue;
+        const file = item.originFileObj;
+        if (!file) throw new Error('无法读取图片，请重新选择');
+        await request(
+          `/projects/${project.id}/collaboration/DEFECT/${id}/attachments?filename=${encodeURIComponent(file.name)}`,
+          {
+            method: 'POST',
+            body: file,
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'X-CSRF-Token': session.csrfToken,
+              'Idempotency-Key': entry.key,
+            },
+            signal: AbortSignal.timeout(60000),
+          },
+        );
+        entry.done = true;
+      }
+      void message.success('缺陷已报告');
+      onSaved(id, 'defects');
+      onClose();
+    } catch (error) {
+      setUploadError(errorMessage(error));
+    } finally {
+      setUploading(false);
+    }
+  };
   return (
     <Modal
       open
       title={title}
       width={700}
       zIndex={1300}
+      style={defectCreate ? { top: 24 } : undefined}
+      styles={
+        defectCreate ? { body: { maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' } } : undefined
+      }
+      closable={!uploading}
+      mask={{ closable: !uploading }}
+      keyboard={!uploading}
       onOk={() => {
         if (defectCreate && step === 0) {
           void form
@@ -95,13 +162,21 @@ export function QualityModal({
             .catch(() => undefined);
         } else form.submit();
       }}
-      onCancel={onClose}
+      onCancel={close}
       footer={
         defectCreate && step === 1 ? (
           <>
-            <Button onClick={onClose}>取消</Button>
-            <Button onClick={() => setStep(0)}>上一步</Button>
-            <Button type="primary" loading={command.isPending} onClick={() => form.submit()}>
+            <Button disabled={uploading} onClick={close}>
+              取消
+            </Button>
+            <Button disabled={uploading || !!createdId} onClick={() => setStep(0)}>
+              上一步
+            </Button>
+            <Button
+              type="primary"
+              loading={command.isPending || uploading}
+              onClick={() => form.submit()}
+            >
               报告缺陷
             </Button>
           </>
@@ -118,10 +193,24 @@ export function QualityModal({
           items={[{ title: '基本信息' }, { title: '问题描述' }]}
         />
       )}
-      {command.isError && <Alert type="error" showIcon title={errorMessage(command.error)} />}
+      {uploadError && (
+        <Alert
+          type="error"
+          showIcon
+          title={uploadError}
+          description={createdId ? '缺陷已创建，可重试上传，或关闭后在详情中补充附件。' : undefined}
+        />
+      )}
+      {!defectCreate && command.isError && (
+        <Alert type="error" showIcon title={errorMessage(command.error)} />
+      )}
+      {createdId && (
+        <Alert type="info" showIcon title="缺陷已创建，基本信息已锁定，可重试上传图片。" />
+      )}
       <Form
         form={form}
         layout="vertical"
+        disabled={defectCreate && (!!createdId || uploading)}
         initialValues={{ source: 'TESTING', severity: 'MAJOR', passed: 'pass', ...op.initial }}
         onValuesChange={(changed) => {
           if ('requirementId' in changed)
@@ -133,6 +222,10 @@ export function QualityModal({
             if (value == null || (value === '' && (key.endsWith('Id') || key === 'deferUntil')))
               delete body[key];
           if (op.action === 'retest') body.passed = values.passed === 'pass';
+          if (defectCreate) {
+            void saveDefect(body);
+            return;
+          }
           command.mutate({
             path: `/projects/${project.id}/quality/${op.entity}${op.id ? `/${op.id}/${op.action}` : ''}`,
             input: body,
@@ -304,7 +397,7 @@ export function QualityModal({
                     : undefined,
               })}
             </Form.Item>
-            {text('evidence', '修复证据说明')}
+            {text('evidence', '修复证据说明（选填）', false)}
           </>
         )}
         {op.action === 'retest' && (
@@ -368,8 +461,49 @@ export function QualityModal({
         )}
         {!edit &&
           op.action !== 'link' &&
-          text('reason', op.action === 'fix' ? '修复说明' : '处理说明')}
+          text(
+            'reason',
+            op.action === 'fix' ? '修复说明（选填）' : '处理说明',
+            op.action !== 'fix',
+          )}
       </Form>
+      {defectCreate && step === 1 && (
+        <div className={styles.defectUpload}>
+          <div className={styles.defectUploadTitle}>问题截图（可选）</div>
+          <p className={styles.formHint}>支持 PNG、JPG、WebP，单张不超过 20 MiB。</p>
+          <Upload
+            listType="picture-card"
+            accept=".png,.jpg,.jpeg,.webp"
+            multiple
+            fileList={files}
+            disabled={uploading}
+            beforeUpload={(file) => {
+              if (!/\.(png|jpe?g|webp)$/i.test(file.name)) {
+                void message.error('请选择 PNG、JPG 或 WebP 图片');
+                return Upload.LIST_IGNORE;
+              }
+              if (!file.size || file.size > 20 * 1024 * 1024) {
+                void message.error('图片大小须在 1 字节至 20 MiB 之间');
+                return Upload.LIST_IGNORE;
+              }
+              return false;
+            }}
+            onRemove={(file) => {
+              if (uploadKeys.current.get(file.uid)?.done) {
+                void message.info('图片已上传，不能在此移除。');
+                return false;
+              }
+              return true;
+            }}
+            onChange={({ fileList }) => setFiles(fileList)}
+          >
+            <div>
+              <PlusOutlined />
+              <div>选择图片</div>
+            </div>
+          </Upload>
+        </div>
+      )}
       {command.isPending && <Button loading style={{ display: 'none' }} />}
     </Modal>
   );

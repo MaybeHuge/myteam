@@ -33,6 +33,7 @@ import { request, errorMessage } from '../../api/client';
 import { projectKey } from '../projects/api';
 import { CollaborationPanel, formatTime } from '../collaboration/CollaborationPanel';
 import { QualityModal, actionLabels, type Operation } from './QualityModal';
+import { AttachmentImages } from './AttachmentImages';
 import { CreateTestRecord, RecordStatus, type RecordSeed } from './ProjectTestRecords';
 import styles from './quality.module.css';
 type Common = { project: Project; session: SessionResponse };
@@ -282,6 +283,12 @@ function Detail({
                               <span>发现环境</span>
                               <p className={styles.content}>{defect.environment}</p>
                             </div>
+                            <AttachmentImages
+                              id={id}
+                              targetType="DEFECT"
+                              title="问题截图"
+                              {...props}
+                            />
                           </section>
                           <section className={styles.detailSection}>
                             <h3>处理概览</h3>

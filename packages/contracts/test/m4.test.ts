@@ -4,6 +4,7 @@ import {
   createTestRecordSchema,
   finishTestRecordSchema,
   createDefectSchema,
+  fixDefectSchema,
   retestDefectSchema,
   taskStatusSchema,
   hasPermission,
@@ -63,4 +64,13 @@ it('构建链接仍只接受完整 HTTP(S) 地址或留空', () => {
           .success,
       ).toBe(true);
   }
+});
+
+it('提交修复的说明和证据可留空，仍限制文本长度', () => {
+  expect(fixDefectSchema.parse({ version: 1 })).toMatchObject({ reason: '', evidence: '' });
+  expect(fixDefectSchema.parse({ version: 1, reason: '  ', evidence: '  ' })).toMatchObject({
+    reason: '',
+    evidence: '',
+  });
+  expect(fixDefectSchema.safeParse({ version: 1, evidence: 'a'.repeat(5001) }).success).toBe(false);
 });

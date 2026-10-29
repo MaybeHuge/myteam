@@ -254,6 +254,23 @@ test('拒绝伪装内容、非法类型/编码/路径、空文件与超过 20 Mi
   assert.equal((await chunked.json()).code, 'VALIDATION_ERROR');
   assert.equal((await objects()).length, 1);
 });
+test('图片预览沿用附件授权，并拒绝预览其他格式', async () => {
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7ioAAAAASUVORK5CYII=',
+    'base64',
+  );
+  const image = await upload(sessions.developer, '截图.png', png).expect(201);
+  const preview = `/projects/${a}/attachments/${image.body.id}/preview`;
+  const response = await get(sessions.viewer, preview).expect(200);
+  assert.match(response.headers['content-type'], /^image\/png/);
+  assert.equal(response.headers['content-disposition'], 'inline');
+  assert.equal(response.headers['x-content-type-options'], 'nosniff');
+  assert.deepEqual(response.body, png);
+  await get(sessions.outsider, preview).expect(404);
+  await request(http).get(`/api/v1${preview}`).expect(401);
+  const textFile = await upload(sessions.developer, '说明.txt', Buffer.from('说明')).expect(201);
+  await get(sessions.viewer, `/projects/${a}/attachments/${textFile.body.id}/preview`).expect(415);
+});
 test('附件按项目与对象授权，管理员跨项目下载留痕；私有文件没有公开路径', async () => {
   await download(sessions.outsider).expect(404);
   await download(sessions.outsider, fileId, b).expect(404);

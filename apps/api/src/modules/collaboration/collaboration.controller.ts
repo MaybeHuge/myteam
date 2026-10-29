@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Req, Res, StreamableFile } from '@n
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { CollaborationService } from './collaboration.service.js';
+import { ApiException } from '../../common/http.js';
 const uuid = (value: string) => z.uuid().parse(value);
 @Controller('projects/:projectId/collaboration/:targetType/:targetId')
 export class CollaborationController {
@@ -26,6 +27,25 @@ export class CollaborationController {
 @Controller('projects/:projectId/attachments')
 export class AttachmentsController {
   constructor(private readonly service: CollaborationService) {}
+  @Get(':id/preview') async preview(
+    @Param('projectId') projectId: string,
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { row, stream } = await this.service.download(uuid(projectId), uuid(id), req);
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(row.contentType)) {
+      stream.destroy();
+      throw new ApiException(415, 'VALIDATION_ERROR', '仅支持预览图片附件');
+    }
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    return new StreamableFile(stream, {
+      type: row.contentType,
+      length: row.size,
+      disposition: 'inline',
+    });
+  }
   @Get(':id/download') async download(
     @Param('projectId') projectId: string,
     @Param('id') id: string,

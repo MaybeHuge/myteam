@@ -36,6 +36,7 @@ import { request, errorMessage } from '../../api/client';
 import { projectKey, useProjectCommand } from '../projects/api';
 import { CollaborationPanel, formatTime } from '../collaboration/CollaborationPanel';
 import { QualityPicker } from './QualityPicker';
+import { AttachmentImages } from './AttachmentImages';
 import styles from './quality.module.css';
 type Common = { project: Project; session: SessionResponse };
 export type RecordSeed = {
@@ -318,6 +319,8 @@ export function CreateTestRecord({
           />
           <Form.Item label="截图与附件" extra="支持图片、PDF、TXT 或 Markdown，单文件最多 20 MiB。">
             <Upload
+              className={styles.recordUploads}
+              listType="picture"
               accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.md"
               multiple
               fileList={files}
@@ -478,6 +481,12 @@ export function TestRecordDetail({
                         <p style={{ whiteSpace: 'pre-wrap' }}>{record.evidence}</p>
                       </>
                     )}
+                    <AttachmentImages
+                      id={record.id}
+                      targetType="TEST_RECORD"
+                      title="测试截图"
+                      {...props}
+                    />
                     <h3>关联缺陷</h3>
                     {record.defects.length ? (
                       <Space wrap>

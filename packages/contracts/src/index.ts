@@ -1216,7 +1216,8 @@ export const assignDefectSchema = qualityReasonSchema.extend({
 });
 export const fixDefectSchema = qualityReasonSchema.extend({
   buildId: z.uuid().nullable().optional(),
-  evidence: qualityText(),
+  reason: z.string().trim().max(5000).default(''),
+  evidence: z.string().trim().max(5000).default(''),
 });
 export const retestDefectSchema = qualityReasonSchema.extend({
   testRecordId: z.uuid().optional(),

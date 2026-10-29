@@ -175,3 +175,55 @@
   margin: 0 0 16px;
   font-size: 15px;
 }
+
+.defectUpload {
+  margin: 0 0 12px;
+}
+.defectUploadTitle {
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.defectImages {
+  margin-top: 20px;
+}
+.defectImages h4 {
+  margin: 0 0 12px;
+}
+.defectImageGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.defectImageGrid figure {
+  width: 160px;
+  max-width: 100%;
+  margin: 0;
+}
+.defectImageGrid img {
+  border-radius: 8px;
+}
+.defectImageGrid figcaption {
+  margin-top: 5px;
+  color: #65725f;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordUploads :global(.ant-upload-list-item) {
+  min-height: 88px;
+  height: auto;
+}
+.recordUploads :global(.ant-upload-list-item-thumbnail) {
+  width: 96px !important;
+  height: 72px !important;
+  flex: 0 0 96px;
+}
+.recordUploads :global(.ant-upload-list-item-thumbnail img) {
+  width: 96px !important;
+  height: 72px !important;
+  object-fit: contain;
+  background: #f5f8f2;
+  border-radius: 6px;
+}
