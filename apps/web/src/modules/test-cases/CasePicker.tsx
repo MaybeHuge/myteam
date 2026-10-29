@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, Select, Space } from 'antd';
@@ -24,6 +25,7 @@ export function CasePicker({
   id?: string;
   'aria-label'?: string;
 }) {
+  useLocale();
   const [search, setSearch] = useState(''),
     [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Option[]>(initial);
@@ -76,10 +78,10 @@ export function CasePicker({
       value={value ?? undefined}
       placeholder={
         purpose === 'requirements'
-          ? '搜索已确认需求，可多选'
+          ? t('搜索已确认需求，可多选')
           : purpose === 'filterRequirement'
-            ? '全部关联需求'
-            : '搜索具有用例权限的成员'
+            ? t('全部关联需求')
+            : t('搜索具有用例权限的成员')
       }
       onChange={(id) => {
         onChange?.(id ?? null);
@@ -92,10 +94,10 @@ export function CasePicker({
       options={items.map((item) => ({ value: item.id, label: item.name }))}
       notFoundContent={
         options.isError
-          ? '加载失败，请重试'
+          ? t('加载失败，请重试')
           : options.isFetching
-            ? '正在加载…'
-            : '没有符合条件的选项'
+            ? t('正在加载…')
+            : t('没有符合条件的选项')
       }
       popupRender={(menu) => (
         <>
@@ -103,7 +105,7 @@ export function CasePicker({
           <Space style={{ padding: 8 }}>
             {options.isError && (
               <Button size="small" onClick={() => void options.refetch()}>
-                重新加载选项
+                {t('重新加载选项')}
               </Button>
             )}
             {options.hasNextPage && (
@@ -112,7 +114,7 @@ export function CasePicker({
                 loading={options.isFetchingNextPage}
                 onClick={() => void options.fetchNextPage()}
               >
-                加载更多选项
+                {t('加载更多选项')}
               </Button>
             )}
           </Space>

@@ -12,7 +12,8 @@ test('工作台与应用框架：待办状态、筛选刷新、分页、项目�
       errors.push(message.text());
   });
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/?wk=ITERATION_FOLLOW_UP');
+  // Keep fixture assertions stable when other browser scenarios retain their iterations.
+  await page.goto('/?wk=ITERATION_FOLLOW_UP&wq=工作台');
   await page.getByLabel('邮箱', { exact: true }).fill('browser-admin@example.test');
   await page.getByLabel('密码', { exact: true }).fill(password);
   await page.getByRole('button', { name: '登录工作空间' }).click();
@@ -141,9 +142,9 @@ test('工作台与应用框架：待办状态、筛选刷新、分页、项目�
   await expect(page.getByText('暂时无法加载待办', { exact: true })).toBeVisible();
   fail = false;
   await page.getByRole('button', { name: '重试加载待办', exact: true }).click();
-  await expect(
-    todo.getByRole('link', { name: '跟进迭代 工作台 · 准备本轮计划', exact: true }),
-  ).toBeVisible();
+  // Recovery returns the current first page, which may contain retained test data.
+  await expect(todo.locator('article').first()).toBeVisible();
+  await expect(page.getByText('暂时无法加载待办', { exact: true })).toHaveCount(0);
   await page.unroute('**/api/v1/workbench/todos?**');
   await page.route('**/api/v1/workbench/todos?**', (route) =>
     route.fulfill({

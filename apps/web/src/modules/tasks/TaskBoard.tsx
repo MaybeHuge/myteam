@@ -1,13 +1,9 @@
+import { taskStatusLabels, taskPriorityLabels } from '../../i18n/labels';
+import { t, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Empty, Pagination, Space, Spin, Tag } from 'antd';
-import {
-  taskStatusLabels,
-  taskPriorityLabels,
-  type Project,
-  type Task,
-  type SessionResponse,
-} from '@myteam/contracts';
+import { type Project, type Task, type SessionResponse } from '@myteam/contracts';
 import { errorMessage } from '../../api/client';
 import { projectKey } from '../projects/api';
 import { loadTaskBoard } from './api';
@@ -29,6 +25,7 @@ export function TaskBoard({
   query: string;
   onOpen: (id: string) => void;
 }) {
+  useLocale();
   const [pages, setPages] = useState<Record<string, number>>({}),
     [dragged, setDragged] = useState<Task | null>(null),
     [operation, setOperation] = useState<{ action: TaskAction; task: Task } | null>(null),
@@ -59,7 +56,7 @@ export function TaskBoard({
               : null;
     if (!action || !task.allowedActions.includes(action)) {
       setError(
-        '当前状态或权限不允许此移动，任务保留原位置。请先核对需求、负责人、阻塞和计划条件。',
+        t('当前状态或权限不允许此移动，任务保留原位置。请先核对需求、负责人、阻塞和计划条件。'),
       );
       return;
     }
@@ -67,9 +64,9 @@ export function TaskBoard({
     setOperation({ action, task });
   };
   return (
-    <section aria-label="任务看板">
+    <section aria-label={t('任务看板')}>
       {error && (
-        <Alert type="warning" showIcon title={error} closable onClose={() => setError('')} />
+        <Alert type="warning" showIcon title={t(error)} closable onClose={() => setError('')} />
       )}
       {board.isPending ? (
         <Spin />
@@ -78,20 +75,22 @@ export function TaskBoard({
           type="error"
           showIcon
           title={errorMessage(board.error)}
-          action={<Button onClick={() => void board.refetch()}>重试加载看板</Button>}
+          action={<Button onClick={() => void board.refetch()}>{t('重试加载看板')}</Button>}
         />
       ) : (
         <>
           <p>
-            共 {board.data.summary.total} 项 · {board.data.summary.blocked} 项阻塞 ·{' '}
-            {board.data.summary.overdue} 项逾期
+            {t('共 ')}
+            {board.data.summary.total} {t(' 项 · ')}
+            {board.data.summary.blocked} {t(' 项阻塞 ·')} {board.data.summary.overdue}{' '}
+            {t(' 项逾期')}
           </p>
           <div className={styles.board}>
             {board.data.columns.map((column) => (
               <section
                 className={styles.column}
                 key={column.status}
-                aria-label={`${taskStatusLabels[column.status]}列`}
+                aria-label={t('{{0}}列', { '0': taskStatusLabels[column.status] })}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault();
@@ -102,7 +101,7 @@ export function TaskBoard({
                   {taskStatusLabels[column.status]} <Tag>{column.total}</Tag>
                 </h3>
                 {!column.items.length ? (
-                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前页暂无任务" />
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('当前页暂无任务')} />
                 ) : (
                   column.items.map((task) => (
                     <article
@@ -120,7 +119,7 @@ export function TaskBoard({
                         event.dataTransfer.effectAllowed = 'move';
                       }}
                       onDragEnd={() => setDragged(null)}
-                      aria-label={`任务卡片 ${task.title}`}
+                      aria-label={t('任务卡片 {{0}}', { '0': task.title })}
                     >
                       <small>
                         {task.code} · {taskPriorityLabels[task.priority]}
@@ -129,10 +128,17 @@ export function TaskBoard({
                         {task.title}
                       </Button>
                       <p>
-                        {task.assignee?.name ?? '待分配'} · {task.dueDate ?? '无截止日'}
+                        {task.assignee?.name ?? t('待分配')} · {task.dueDate ?? t('无截止日')}
                       </p>
-                      {task.blocked && <Tag color="orange">阻塞 · {task.helper?.name}</Tag>}
-                      {task.needsRequirementReview && <Tag color="orange">待核对需求变更</Tag>}
+                      {task.blocked && (
+                        <Tag color="orange">
+                          {t('阻塞 · ')}
+                          {task.helper?.name}
+                        </Tag>
+                      )}
+                      {task.needsRequirementReview && (
+                        <Tag color="orange">{t('待核对需求变更')}</Tag>
+                      )}
                       <Space wrap>
                         {(
                           [
@@ -153,20 +159,20 @@ export function TaskBoard({
                               onClick={() => setOperation({ action, task })}
                             >
                               {action === 'start'
-                                ? '开始'
+                                ? t('开始')
                                 : action === 'block'
                                   ? task.blocked
-                                    ? '调整阻塞'
-                                    : '阻塞'
+                                    ? t('调整阻塞')
+                                    : t('阻塞')
                                   : action === 'resume'
-                                    ? '恢复'
+                                    ? t('恢复')
                                     : action === 'complete'
-                                      ? '完成'
+                                      ? t('完成')
                                       : action === 'reopen'
-                                        ? '重新开始'
+                                        ? t('重新开始')
                                         : action === 'reset'
-                                          ? '待开始'
-                                          : '核对变更'}
+                                          ? t('待开始')
+                                          : t('核对变更')}
                             </Button>
                           ))}
                       </Space>
@@ -179,7 +185,7 @@ export function TaskBoard({
                       setPages((previous) => ({ ...previous, [pageNames[column.status]]: 1 }))
                     }
                   >
-                    返回第一页
+                    {t('返回第一页')}
                   </Button>
                 )}
                 <Pagination

@@ -1,3 +1,5 @@
+import { t, useLocale } from '../../i18n';
+import { useEffect } from 'react';
 import { Alert, Button, Form, Input, Typography } from 'antd';
 import {
   ArrowRightOutlined,
@@ -8,8 +10,21 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { loginSchema } from '@myteam/contracts';
 import { errorMessage, login, replaceSession } from '../../api/client';
+import { LanguageSwitcher } from '../../i18n/LanguageSwitcher';
 
 export function LoginPage() {
+  const locale = useLocale();
+  const [form] = Form.useForm();
+  useEffect(() => {
+    const invalid = form
+      .getFieldsError()
+      .filter((field) => field.errors.length)
+      .map((field) => field.name);
+    if (invalid.length)
+      void form.validateFields(invalid).catch(() => {
+        /* Form displays localized errors. */
+      });
+  }, [form, locale]);
   const client = useQueryClient();
   const mutation = useMutation({
     mutationFn: (values: { email: string; password: string }) => {
@@ -20,44 +35,47 @@ export function LoginPage() {
   });
   return (
     <main className="login-layout">
-      <section className="login-story" aria-label="MyTeam 团队协作">
+      <section className="login-story" aria-label={t('MyTeam 团队协作')}>
         <a href="/" className="brand brand-light">
           <span className="brand-mark">m</span>MyTeam<span className="brand-dot">.</span>
         </a>
         <div className="story-copy">
           <span className="eyebrow">BUILD TOGETHER, DELIVER BETTER</span>
           <h1>
-            让团队的每一步，
+            {t('让团队的每一步，')}
             <br />
-            都走向交付。
+            {t('都走向交付。')}
           </h1>
           <p>
-            连接需求、开发与测试，
+            {t('连接需求、开发与测试，')}
             <br />
-            让工作有序推进，让协作清晰可见。
+            {t('让工作有序推进，让协作清晰可见。')}
           </p>
           <div className="flow-line">
-            <span>需求</span>
+            <span>{t('需求')}</span>
             <i />
-            <span>开发</span>
+            <span>{t('开发')}</span>
             <i />
-            <span>测试</span>
+            <span>{t('测试')}</span>
             <i />
-            <span>交付</span>
+            <span>{t('交付')}</span>
           </div>
         </div>
         <div className="story-footer">
-          <CheckCircleFilled /> 团队协作，从一个共同的工作空间开始
+          <CheckCircleFilled /> {t(' 团队协作，从一个共同的工作空间开始')}
         </div>
         <div className="orbit orbit-one" />
         <div className="orbit orbit-two" />
       </section>
       <section className="login-form-panel">
+        <div className="login-language">
+          <LanguageSwitcher />
+        </div>
         <div className="login-form-wrap">
-          <span className="form-kicker">你的团队工作空间</span>
-          <Typography.Title level={2}>欢迎回来</Typography.Title>
+          <span className="form-kicker">{t('你的团队工作空间')}</span>
+          <Typography.Title level={2}>{t('欢迎回来')}</Typography.Title>
           <Typography.Paragraph type="secondary">
-            登录 MyTeam，继续与你的团队一起推进工作。
+            {t('登录 MyTeam，继续与你的团队一起推进工作。')}
           </Typography.Paragraph>
           {mutation.isError && (
             <Alert
@@ -69,6 +87,7 @@ export function LoginPage() {
             />
           )}
           <Form
+            form={form}
             layout="vertical"
             requiredMark={false}
             onFinish={(values: { email: string; password: string }) => mutation.mutate(values)}
@@ -76,15 +95,15 @@ export function LoginPage() {
           >
             <Form.Item
               name="email"
-              label="邮箱"
+              label={t('邮箱')}
               rules={[
-                { required: true, message: '请输入邮箱' },
-                { type: 'email', message: '请输入有效的邮箱地址' },
+                { required: true, message: t('请输入邮箱') },
+                { type: 'email', message: t('请输入有效的邮箱地址') },
               ]}
             >
               <Input
                 prefix={<MailOutlined />}
-                placeholder="输入你的工作邮箱"
+                placeholder={t('输入你的工作邮箱')}
                 size="large"
                 autoComplete="username"
                 maxLength={254}
@@ -92,12 +111,12 @@ export function LoginPage() {
             </Form.Item>
             <Form.Item
               name="password"
-              label="密码"
-              rules={[{ required: true, message: '请输入密码' }]}
+              label={t('密码')}
+              rules={[{ required: true, message: t('请输入密码') }]}
             >
               <Input.Password
                 prefix={<LockOutlined />}
-                placeholder="输入登录密码"
+                placeholder={t('输入登录密码')}
                 size="large"
                 autoComplete="current-password"
                 maxLength={128}
@@ -112,12 +131,12 @@ export function LoginPage() {
               icon={<ArrowRightOutlined />}
               iconPlacement="end"
             >
-              登录工作空间
+              {t('登录工作空间')}
             </Button>
           </Form>
-          <p className="account-note">还没有账号？请联系你的系统管理员。</p>
+          <p className="account-note">{t('还没有账号？请联系你的系统管理员。')}</p>
         </div>
-        <footer className="login-footer">MyTeam · 让协作成为交付的力量</footer>
+        <footer className="login-footer">{t('MyTeam · 让协作成为交付的力量')}</footer>
       </section>
     </main>
   );

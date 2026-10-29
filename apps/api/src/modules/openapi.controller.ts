@@ -183,7 +183,14 @@ for (const [kind, list, detail, input] of [
     };
 }
 for (const [kind, actions] of [
-  ['releases', { update: quality.updateReleaseSchema }],
+  [
+    'releases',
+    {
+      update: quality.updateReleaseSchema,
+      publish: quality.publishReleaseSchema,
+      followup: quality.releaseFollowupSchema,
+    },
+  ],
   ['records', { finish: quality.finishTestRecordSchema }],
   [
     'defects',
@@ -192,6 +199,7 @@ for (const [kind, actions] of [
       assign: quality.assignDefectSchema,
       start: quality.qualityReasonSchema,
       fix: quality.fixDefectSchema,
+      updateFixBuild: quality.updateFixBuildSchema,
       retest: quality.retestDefectSchema,
       reopen: quality.qualityReasonSchema,
       dispose: quality.disposeDefectSchema,
@@ -208,6 +216,22 @@ for (const [kind, actions] of [
       ]),
     };
 }
+qualityPaths[`${qualityPrefix}/releases/{id}/check`] = {
+  get: {
+    ...securedGet('发布条件检查', jsonSchema(quality.releaseCheckSchema)),
+    parameters: [
+      projectPathId,
+      pathId,
+      { name: 'buildId', in: 'query', required: false, schema: { type: 'string', format: 'uuid' } },
+    ],
+  },
+};
+qualityPaths[`${qualityPrefix}/releases/{id}/events`] = {
+  get: {
+    ...securedGet('分页查询发布、验证及回滚记录', jsonSchema(quality.releaseEventListSchema)),
+    parameters: [projectPathId, pathId, ...queryParameters(quality.paginationSchema)],
+  },
+};
 for (const [name, schema] of [
   ['options', quality.qualityOptionsQuerySchema],
   ['people', quality.qualityPeopleQuerySchema],

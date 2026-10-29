@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { EmptyPage } from '../../shared/EmptyPage';
 import { readPage } from '../../shared/list-state';
 import {
@@ -25,6 +26,7 @@ import { useSearchParams } from 'react-router';
 import { ApiError, errorMessage, replaceSession, request } from '../../api/client';
 
 export function UsersPage({ session }: { session: SessionResponse }) {
+  useLocale();
   const client = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
@@ -44,7 +46,7 @@ export function UsersPage({ session }: { session: SessionResponse }) {
   const data = users.isError ? undefined : users.data;
   const create = useProjectCommand<{ id: string }>(session, () => {
     void client.invalidateQueries({ queryKey: ['users'] });
-    void message.success('账号已创建，可以将该成员加入项目');
+    void message.success(t('账号已创建，可以将该成员加入项目'));
     setCreating(false);
   });
   const mutation = useMutation({
@@ -59,7 +61,7 @@ export function UsersPage({ session }: { session: SessionResponse }) {
         client.invalidateQueries({ queryKey: ['users'] }),
         client.invalidateQueries({ queryKey: ['projects'] }),
       ]);
-      void message.success('账号状态已更新');
+      void message.success(t('账号状态已更新'));
     },
     onError: (error) => {
       void message.error(errorMessage(error));
@@ -72,30 +74,30 @@ export function UsersPage({ session }: { session: SessionResponse }) {
     <>
       <div className={styles.pageIntro}>
         <div>
-          <span className={styles.eyebrow}>PEOPLE / 成员与访问</span>
+          <span className={styles.eyebrow}>{t('PEOPLE / 成员与访问')}</span>
           <h1>
-            账号管理
+            {t('账号管理')}
             <span aria-hidden="true" className={styles.headingDot}>
               .
             </span>
           </h1>
-          <p>查看工作空间成员，管理账号的访问状态。</p>
+          <p>{t('查看工作空间成员，管理账号的访问状态。')}</p>
         </div>
         <Space>
           <Button
-            aria-label="新建账号"
+            aria-label={t('新建账号')}
             type="primary"
             icon={<UserAddOutlined aria-hidden />}
             onClick={() => setCreating(true)}
           >
-            新建账号
+            {t('新建账号')}
           </Button>
           <Button
             icon={<ReloadOutlined />}
             onClick={() => void users.refetch()}
             loading={users.isFetching}
           >
-            刷新
+            {t('刷新')}
           </Button>
         </Space>
       </div>
@@ -104,24 +106,24 @@ export function UsersPage({ session }: { session: SessionResponse }) {
           showIcon
           type="error"
           title={errorMessage(users.error)}
-          action={<Button onClick={() => void users.refetch()}>重试</Button>}
+          action={<Button onClick={() => void users.refetch()}>{t('重试')}</Button>}
         />
       )}
       <div className="people-summary">
         <div>
-          <span>工作空间账号</span>
+          <span>{t('工作空间账号')}</span>
           <strong>{data?.stats.total ?? '—'}</strong>
-          <small>共用一个协作空间</small>
+          <small>{t('共用一个协作空间')}</small>
         </div>
         <div>
-          <span>可用账号</span>
+          <span>{t('可用账号')}</span>
           <strong>{data?.stats.active ?? '—'}</strong>
-          <small>可以登录并参与协作</small>
+          <small>{t('可以登录并参与协作')}</small>
         </div>
         <div>
-          <span>已停用</span>
+          <span>{t('已停用')}</span>
           <strong>{data?.stats.inactive ?? '—'}</strong>
-          <small>已收回登录权限</small>
+          <small>{t('已收回登录权限')}</small>
         </div>
       </div>
       <Card
@@ -129,8 +131,8 @@ export function UsersPage({ session }: { session: SessionResponse }) {
         extra={
           <Input
             maxLength={100}
-            aria-label="搜索账号"
-            placeholder="搜索姓名或邮箱"
+            aria-label={t('搜索账号')}
+            placeholder={t('搜索姓名或邮箱')}
             value={search}
             allowClear
             prefix={<SearchOutlined />}
@@ -143,7 +145,7 @@ export function UsersPage({ session }: { session: SessionResponse }) {
         title={
           <Space>
             <TeamOutlined />
-            工作空间账号
+            {t('工作空间账号')}
           </Space>
         }
       >
@@ -163,10 +165,10 @@ export function UsersPage({ session }: { session: SessionResponse }) {
                 setParams({ ...(search ? { q: search } : {}), page: String(page) }),
             }}
             scroll={{ x: 640 }}
-            locale={{ emptyText: <Empty description="暂无账号" /> }}
+            locale={{ emptyText: <Empty description={t('暂无账号')} /> }}
             columns={[
               {
-                title: '成员',
+                title: t('成员'),
                 dataIndex: 'name',
                 render: (name: string, user) => (
                   <div className="user-cell">
@@ -181,42 +183,46 @@ export function UsersPage({ session }: { session: SessionResponse }) {
                 ),
               },
               {
-                title: '系统角色',
+                title: t('系统角色'),
                 dataIndex: 'isSystemAdmin',
                 render: (value: boolean) => (
-                  <Tag color={value ? 'blue' : 'default'}>{value ? '系统管理员' : '普通成员'}</Tag>
+                  <Tag color={value ? 'blue' : 'default'}>
+                    {value ? t('系统管理员') : t('普通成员')}
+                  </Tag>
                 ),
               },
               {
-                title: '状态',
+                title: t('状态'),
                 dataIndex: 'active',
                 render: (value: boolean) => (
-                  <Tag color={value ? 'success' : 'default'}>{value ? '可用' : '已停用'}</Tag>
+                  <Tag color={value ? 'success' : 'default'}>{value ? t('可用') : t('已停用')}</Tag>
                 ),
               },
               {
-                title: '操作',
+                title: t('操作'),
                 render: (_, user) =>
                   user.isSystemAdmin ? (
                     <Typography.Text type="secondary">—</Typography.Text>
                   ) : (
                     <Popconfirm
-                      title={user.active ? '停用该账号？' : '启用该账号？'}
+                      title={user.active ? t('停用该账号？') : t('启用该账号？')}
                       description={
-                        user.active ? '该成员的现有登录将立即失效。' : '该成员将可以重新登录。'
+                        user.active
+                          ? t('该成员的现有登录将立即失效。')
+                          : t('该成员将可以重新登录。')
                       }
                       onConfirm={() => mutation.mutateAsync(user).then(() => undefined)}
-                      okText="确认"
-                      cancelText="取消"
+                      okText={t('确认')}
+                      cancelText={t('取消')}
                     >
                       <Button
-                        aria-label={user.active ? '停用' : '启用'}
+                        aria-label={user.active ? t('停用') : t('启用')}
                         aria-busy={mutation.isPending && mutation.variables?.id === user.id}
                         type="link"
                         danger={user.active}
                         loading={mutation.isPending && mutation.variables?.id === user.id}
                       >
-                        {user.active ? '停用' : '启用'}
+                        {user.active ? t('停用') : t('启用')}
                       </Button>
                     </Popconfirm>
                   ),
@@ -233,7 +239,7 @@ export function UsersPage({ session }: { session: SessionResponse }) {
         title={
           <span className={styles.drawerTitle}>
             <UserAddOutlined />
-            新建工作空间账号
+            {t('新建工作空间账号')}
           </span>
         }
         afterOpenChange={(open) => {
@@ -244,18 +250,18 @@ export function UsersPage({ session }: { session: SessionResponse }) {
         }}
         footer={
           <div className={styles.drawerFooter}>
-            <span>新账号默认没有项目访问权限</span>
+            <span>{t('新账号默认没有项目访问权限')}</span>
             <Space>
-              <Button onClick={() => setCreating(false)}>取消</Button>
+              <Button onClick={() => setCreating(false)}>{t('取消')}</Button>
               <Button type="primary" loading={create.isPending} onClick={() => form.submit()}>
-                创建账号
+                {t('创建账号')}
               </Button>
             </Space>
           </div>
         }
       >
         <p className={styles.drawerDescription}>
-          先为伙伴建立账号，再由项目负责人添加到对应项目。初始密码请通过合适的渠道告知本人。
+          {t('先为伙伴建立账号，再由项目负责人添加到对应项目。初始密码请通过合适的渠道告知本人。')}
         </p>
         {create.isError && (
           <Alert
@@ -276,39 +282,39 @@ export function UsersPage({ session }: { session: SessionResponse }) {
         >
           <Form.Item
             name="name"
-            label="姓名"
-            rules={[{ required: true, whitespace: true, message: '请输入姓名' }, { max: 80 }]}
+            label={t('姓名')}
+            rules={[{ required: true, whitespace: true, message: t('请输入姓名') }, { max: 80 }]}
           >
-            <Input size="large" placeholder="伙伴的名字" autoFocus />
+            <Input size="large" placeholder={t('伙伴的名字')} autoFocus />
           </Form.Item>
           <Form.Item
             name="email"
-            label="登录邮箱"
+            label={t('登录邮箱')}
             rules={[
-              { required: true, message: '请输入邮箱' },
-              { type: 'email', message: '请输入有效邮箱' },
+              { required: true, message: t('请输入邮箱') },
+              { type: 'email', message: t('请输入有效邮箱') },
             ]}
           >
             <Input placeholder="name@company.com" autoComplete="off" maxLength={254} />
           </Form.Item>
           <Form.Item
             name="password"
-            label="初始密码"
-            extra="至少 6 位，不会通过站内通知或邮件自动发送。"
+            label={t('初始密码')}
+            extra={t('至少 6 位，不会通过站内通知或邮件自动发送。')}
             rules={[
-              { required: true, message: '请设置初始密码' },
-              { min: 6, message: '至少需要 6 位' },
+              { required: true, message: t('请设置初始密码') },
+              { min: 6, message: t('至少需要 6 位') },
               { max: 128 },
             ]}
           >
             <Input.Password
               autoComplete="new-password"
-              placeholder="为账号设置初始密码"
+              placeholder={t('为账号设置初始密码')}
               maxLength={128}
             />
           </Form.Item>
           <div className={styles.permissionNote}>
-            账号的系统角色为普通成员，具体项目权限由项目内角色决定。
+            {t('账号的系统角色为普通成员，具体项目权限由项目内角色决定。')}
           </div>
         </Form>
       </Drawer>

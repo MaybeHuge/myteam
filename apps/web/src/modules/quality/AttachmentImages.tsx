@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Image, Pagination } from 'antd';
@@ -13,6 +14,7 @@ export function AttachmentImages({
   targetType,
   title,
 }: Common & { id: string; targetType: 'DEFECT' | 'TEST_RECORD'; title: string }) {
+  useLocale();
   const [page, setPage] = useState(1);
   const images = useQuery({
     queryKey: [
@@ -36,8 +38,8 @@ export function AttachmentImages({
       <Alert
         type="error"
         showIcon
-        title="图片加载失败"
-        action={<Button onClick={() => void images.refetch()}>重试</Button>}
+        title={t('图片加载失败')}
+        action={<Button onClick={() => void images.refetch()}>{t('重试')}</Button>}
       />
     );
   const files = images.data.items.filter((file) =>
@@ -65,7 +67,7 @@ export function AttachmentImages({
           </div>
         </Image.PreviewGroup>
       ) : (
-        <p className={styles.muted}>此页没有图片附件</p>
+        <p className={styles.muted}>{t('此页没有图片附件')}</p>
       )}
       <Pagination
         size="small"

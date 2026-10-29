@@ -4,6 +4,8 @@
 
 当前任务和测试流程的验收基线已调整为 [ADR-008](adr/008-lightweight-testing-records.md)，对应当前验证见 [轻量测试验证](verification/lightweight-testing.md)。下表中的提测、批次和任务待验收条目记录旧批次验收结果，不再作为当前操作入口或完成条件。
 
+M5 已按 [ADR-009](adr/009-simple-release.md) 简化，下列旧业务验收和风险审批条目保留为历史规划；简化发布的验证见 [M5 验证](verification/m5-simple-release.md)。
+
 ## 1. 执行规则
 
 - 本文所有 AC 编号均为 P0 必测项；只有存在真实结果和证据才能改为通过。

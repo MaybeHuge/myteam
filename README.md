@@ -2,7 +2,7 @@
 
 覆盖需求、任务、测试用例、测试记录、缺陷和版本构建的研发协作平台。
 
-当前已实现账号会话、项目/成员、迭代、通用协作、需求评审修订、三状态任务看板、用例库及评审、测试记录、缺陷修复复测和版本构建。任务由开发维护待开始/进行中/完成，需求自动汇总为实现中、待测试、测试中或已完成。测试记录替代提测管理和测试执行，支持从用例发起、多次测试、截图附件、失败自动建缺陷及复测联动。现行规则见 [ADR-008](docs/adr/008-lightweight-testing-records.md)，本次验证见 [轻量测试验证](docs/verification/lightweight-testing.md)。独立业务验收和发布仍在后续范围。
+当前已实现账号会话、项目/成员、迭代、通用协作、需求评审修订、三状态任务看板、用例库及评审、测试记录、缺陷修复复测和版本构建。任务由开发维护待开始/进行中/完成，需求自动汇总为实现中、待测试、测试中或已完成。测试记录替代提测管理和测试执行，支持从用例发起、多次测试、截图附件、失败自动建缺陷及复测联动。现行规则见 [ADR-008](docs/adr/008-lightweight-testing-records.md)，本次验证见 [轻量测试验证](docs/verification/lightweight-testing.md)。版本支持发布前检查、人工发布登记、上线验证及回滚记录；不执行自动部署。
 
 技术基线：React 19 + TypeScript + Vite + Ant Design 6；NestJS 模块化单体后端；PostgreSQL + Prisma；Node.js 24 LTS；pnpm workspace。固定版本见 package.json 与 pnpm-lock.yaml；实际运行与限制见 [首批验证](docs/verification/m0-identity.md) 和 [项目与界面验证](docs/verification/m1-projects.md)。
 
@@ -52,6 +52,8 @@ docker run -d --name seaweedfs --restart unless-stopped \
 
 ## 当前可以做什么
 
+界面支持简体中文和英语，可在登录页及工作区顶部切换。默认中文，选择保存在当前浏览器，并同步到其他标签页；刷新后保留，切换时不重置当前表单。导航、业务页面、状态标签、表单提示、日期及接口错误随语言切换，项目名称、需求内容和评论等用户数据保持原文。实现约定见 [中英文支持](docs/adr/010-internationalization.md)。
+
 1. 管理员在账号管理中创建普通账号；不会自动发送邮件或密码。登录后可从顶部的“修改密码”入口修改自己的密码。
 2. 管理员创建项目并成为主负责人，设置简介、主题、图标和日期。
 3. 在成员与权限页通过下拉框选择已有账号，支持搜索姓名/邮箱，分配一个或多个项目角色；已加入和已停用的账号会自动排除。
@@ -65,7 +67,7 @@ docker run -d --name seaweedfs --restart unless-stopped \
 10. 在工作台查看本人负责的未关闭迭代、逾期与计划，直接进入跟进；改派、关闭及项目权限变化后列表自动更新。
 11. 通过顶部搜索切换授权项目；筛选与分页可刷新保留，从项目详情返回仍保留原列表搜索与视图。
 
-项目详情提供需求管理、三列任务看板、测试用例、测试记录、版本与构建及缺陷管理。需求和用例继续保留指定评审、修订与依据失效规则。测试可以提前进行，需求完成要求开发任务全部完成、本轮全部有效用例通过且无阻断缺陷。
+项目详情提供需求管理、三列任务看板、测试用例、测试记录、版本与构建及缺陷管理。 在版本详情选择实际构建并检查关联需求和严重缺陷，通过后可登记发布结果；成功发布后可记录上线验证或回滚。需求和用例继续保留指定评审、修订与依据失效规则。测试可以提前进行，需求完成要求开发任务全部完成、本轮全部有效用例通过且无阻断缺陷。
 
 演示数据生成方式见下方「检查与测试」。
 
@@ -134,10 +136,10 @@ docs/                   需求、架构、计划、验收和进度
 
 建议下一次开发指令：
 
-> 阅读 README.md、docs/progress.md 和 ADR-008，按当前测试记录模型继续设计验收或发布；不要恢复旧提测和批次流程。需求已完成表示开发测试完成，发布资格仍需单独判断。
+> 阅读 README.md、docs/progress.md 和 ADR-008，按 ADR-008 和 ADR-009 继续推进 M6 集成验收与试运行；不要恢复旧提测和批次流程。需求已完成表示开发测试完成，发布资格仍需单独判断。
 
 详细需求来自本项目讨论，文档基线日期：2026-10-27。
 
 功能与界面证据：[项目与成员验证](docs/verification/m1-projects.md)、[基础迭代验证](docs/verification/m1-iterations.md)、[通用协作验证](docs/verification/m1-collaboration.md)。M4 完成时 205 项自动化检查通过（28 契约/缓存 + 162 集成 + 15 个浏览器场景）；格式、静态、类型与构建检查通过；应用框架与 M1 退出证据见 [本批验证](docs/verification/m1-framework.md)，SeaweedFS 切换及迁移证据见 [资源存储验证](docs/verification/seaweedfs-storage.md)。
 
-需求维护与评审证据见 [M2-01 验证](docs/verification/m2-requirements.md)，任务拆解证据见 [M2-02 验证](docs/verification/m2-tasks.md)，M2 全部任务已完成，证据见 [验证记录](docs/verification/m2-completion.md)。M3-01/02 用例库与评审修订已完成，见 [用例验证](docs/verification/m3-cases.md)，M3-03 测试准备、关联用例与评审/复查待办已完成，见 [准备验证](docs/verification/m3-preparation.md)；M3-04 执行快照契约与 M3 阶段退出已完成，见 [M3 完成验证](docs/verification/m3-completion.md)；M4-01—06 全部完成，见 [提测与缺陷验证](docs/verification/m4-completion.md)，现行测试流程已由 ADR-008 替代，后续验收与发布需按新模型调整。
+需求维护与评审证据见 [M2-01 验证](docs/verification/m2-requirements.md)，任务拆解证据见 [M2-02 验证](docs/verification/m2-tasks.md)，M2 全部任务已完成，证据见 [验证记录](docs/verification/m2-completion.md)。M3-01/02 用例库与评审修订已完成，见 [用例验证](docs/verification/m3-cases.md)，M3-03 测试准备、关联用例与评审/复查待办已完成，见 [准备验证](docs/verification/m3-preparation.md)；M3-04 执行快照契约与 M3 阶段退出已完成，见 [M3 完成验证](docs/verification/m3-completion.md)；M4-01—06 全部完成，见 [提测与缺陷验证](docs/verification/m4-completion.md)，现行测试流程已由 ADR-008 替代，简化发布流程见 ADR-009。

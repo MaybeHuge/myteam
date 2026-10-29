@@ -1,3 +1,10 @@
+import {
+  taskStatusLabels,
+  requirementStatusLabels,
+  requirementPriorityLabels,
+  requirementTypeLabels,
+} from '../../i18n/labels';
+import { t, localizeLabels, useLocale } from '../../i18n';
 import { TestRecordsList } from '../quality/ProjectTestRecords';
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -22,10 +29,6 @@ import {
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   hasPermission,
-  taskStatusLabels,
-  requirementStatusLabels,
-  requirementPriorityLabels,
-  requirementTypeLabels,
   requirementStatusSchema,
   requirementPrioritySchema,
   requirementTypeSchema,
@@ -43,20 +46,20 @@ import { RequirementEditor } from './RequirementEditor';
 import { RequirementPicker } from './RequirementPicker';
 import { PreparationNotice, RequirementCases } from './RequirementTestPreparation';
 import styles from './requirements.module.css';
-const actionLabels = {
+const actionLabels = localizeLabels({
   submit: '提交评审',
   approve: '确认需求',
   return: '退回修改',
   withdraw: '撤回评审',
   cancel: '取消需求',
-} as const;
+} as const);
 type Action = keyof typeof actionLabels;
-const historyLabels = {
+const historyLabels = localizeLabels({
   SUBMITTED: '提交评审',
   APPROVED: '确认需求',
   RETURNED: '退回修改',
   WITHDRAWN: '撤回评审',
-} as const;
+} as const);
 const statusColor = {
   DRAFT: 'default',
   IN_REVIEW: 'orange',
@@ -68,6 +71,7 @@ const statusColor = {
   CANCELLED: 'default',
 } as const;
 function Status({ item }: { item: Requirement }) {
+  useLocale();
   return <Tag color={statusColor[item.status]}>{requirementStatusLabels[item.status]}</Tag>;
 }
 function Detail({
@@ -83,6 +87,7 @@ function Detail({
   onClose: () => void;
   onEdit: (item: Requirement) => void;
 }) {
+  useLocale();
   const [navigationParams] = useSearchParams();
   const taskHref = (newTask: boolean) => {
     const next = new URLSearchParams({
@@ -112,7 +117,7 @@ function Detail({
     queryFn: ({ signal }) => loadRequirement(project.id, id, page, signal, taskPage, casePage),
   });
   const command = useProjectCommand(session, () => {
-    void message.success('需求状态已更新');
+    void message.success(t('需求状态已更新'));
     setOperation(null);
   });
   const item = detail.data;
@@ -124,7 +129,7 @@ function Detail({
     (action === 'approve' && operation?.item.reviewer?.id !== session.user.id);
   return (
     <>
-      <Drawer open size="min(760px, 100vw)" title="需求详情" onClose={onClose}>
+      <Drawer open size="min(760px, 100vw)" title={t('需求详情')} onClose={onClose}>
         {detail.isPending ? (
           <Skeleton active />
         ) : detail.isError || !item ? (
@@ -132,43 +137,44 @@ function Detail({
             type="error"
             showIcon
             title={errorMessage(detail.error)}
-            action={<Button onClick={() => void detail.refetch()}>重新加载需求</Button>}
+            action={<Button onClick={() => void detail.refetch()}>{t('重新加载需求')}</Button>}
           />
         ) : (
           <>
             <span className={styles.code}>
-              {item.code} · 内容版本 {item.revision}
+              {item.code} {t(' · 内容版本 ')}
+              {item.revision}
             </span>
             <h2 className={styles.detailTitle}>{item.title}</h2>
             <Space wrap>
               <Status item={item} />
               <Tag>{requirementTypeLabels[item.type]}</Tag>
-              <Tag>{requirementPriorityLabels[item.priority]}优先级</Tag>
+              <Tag>{t('{{0}}优先级', { 0: requirementPriorityLabels[item.priority] })}</Tag>
             </Space>
             <dl className={styles.facts}>
               <div>
-                <dt>需求负责人</dt>
-                <dd>{item.owner?.name ?? '尚未指定'}</dd>
+                <dt>{t('需求负责人')}</dt>
+                <dd>{item.owner?.name ?? t('尚未指定')}</dd>
               </div>
               <div>
-                <dt>所属迭代</dt>
-                <dd>{item.iteration?.name ?? '暂未安排'}</dd>
+                <dt>{t('所属迭代')}</dt>
+                <dd>{item.iteration?.name ?? t('暂未安排')}</dd>
               </div>
               <div>
-                <dt>评审人</dt>
-                <dd>{item.reviewer?.name ?? '提交时指定'}</dd>
+                <dt>{t('评审人')}</dt>
+                <dd>{item.reviewer?.name ?? t('提交时指定')}</dd>
               </div>
               <div>
-                <dt>最近更新</dt>
+                <dt>{t('最近更新')}</dt>
                 <dd>{formatTime(item.updatedAt)}</dd>
               </div>
             </dl>
             <Space wrap style={{ marginBottom: 20 }}>
               {item.allowedActions.includes('revise') && (
-                <Button onClick={() => onEdit(item)}>修订需求</Button>
+                <Button onClick={() => onEdit(item)}>{t('修订需求')}</Button>
               )}
               {item.allowedActions.includes('edit') && (
-                <Button onClick={() => onEdit(item)}>编辑需求</Button>
+                <Button onClick={() => onEdit(item)}>{t('编辑需求')}</Button>
               )}
               {(['submit', 'approve', 'return', 'withdraw', 'cancel'] as const)
                 .filter((value) => item.allowedActions.includes(value))
@@ -193,13 +199,13 @@ function Detail({
               <Alert
                 type="success"
                 showIcon
-                title="需求已确认，评审基线已保留"
-                description="当前基线受保护，需要调整时请发起新修订并重新评审。"
+                title={t('需求已确认，评审基线已保留')}
+                description={t('当前基线受保护，需要调整时请发起新修订并重新评审。')}
               />
             )}
             <Space wrap style={{ marginBottom: 16 }}>
               <Link to={taskHref(false)}>
-                <Button>查看关联任务</Button>
+                <Button>{t('查看关联任务')}</Button>
               </Link>
               {[
                 'DRAFT',
@@ -213,7 +219,7 @@ function Detail({
                 !['ACCEPTING', 'COMPLETED', 'ARCHIVED'].includes(project.status) &&
                 (session.user.isSystemAdmin || hasPermission(project.myRoles, 'task:write')) && (
                   <Link to={taskHref(true)}>
-                    <Button>拆分任务</Button>
+                    <Button>{t('拆分任务')}</Button>
                   </Link>
                 )}
             </Space>
@@ -225,7 +231,7 @@ function Detail({
                 <Link
                   to={`/projects/${project.id}?${new URLSearchParams({ tab: 'test-cases', newCase: item.id, crequirement: item.id, ...(navigationParams.get('list') ? { list: navigationParams.get('list')! } : {}) })}`}
                 >
-                  <Button style={{ marginTop: 12 }}>为此需求创建用例</Button>
+                  <Button style={{ marginTop: 12 }}>{t('为此需求创建用例')}</Button>
                 </Link>
               )}
             <PreparationNotice item={item} />
@@ -235,21 +241,21 @@ function Detail({
               items={[
                 {
                   key: 'content',
-                  label: '需求内容',
+                  label: t('需求内容'),
                   children: (
                     <>
-                      <h3>需求描述</h3>
-                      <p className={styles.content}>{item.description || '尚未填写需求描述'}</p>
-                      <h3>验收标准</h3>
+                      <h3>{t('需求描述')}</h3>
+                      <p className={styles.content}>{item.description || t('尚未填写需求描述')}</p>
+                      <h3>{t('验收标准')}</h3>
                       <p className={styles.content}>
-                        {item.acceptanceCriteria || '尚未填写验收标准'}
+                        {item.acceptanceCriteria || t('尚未填写验收标准')}
                       </p>
                     </>
                   ),
                 },
                 {
                   key: 'cases',
-                  label: `关联用例 (${item.cases.total})`,
+                  label: t('关联用例 ({{0}})', { '0': item.cases.total }),
                   children: (
                     <RequirementCases
                       item={item}
@@ -261,22 +267,28 @@ function Detail({
                 },
                 {
                   key: 'records',
-                  label: '测试记录',
+                  label: t('测试记录'),
                   children: (
                     <TestRecordsList project={project} session={session} requirementId={item.id} />
                   ),
                 },
                 {
                   key: 'tasks',
-                  label: `关联任务 (${item.taskSummary.total})`,
+                  label: t('关联任务 ({{0}})', { '0': item.taskSummary.total }),
                   children: (
                     <>
                       <p>
-                        待开始 {item.taskSummary.todo} · 进行中 {item.taskSummary.inProgress} · 完成{' '}
-                        {item.taskSummary.completed} · 阻塞 {item.taskSummary.blocked}
+                        {t('待开始 ')}
+                        {item.taskSummary.todo} {t(' · 进行中 ')}
+                        {item.taskSummary.inProgress} {t(' · 完成')} {item.taskSummary.completed}{' '}
+                        {t(' · 阻塞 ')}
+                        {item.taskSummary.blocked}
                       </p>
                       {!item.tasks.total ? (
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未拆分任务" />
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={t('尚未拆分任务')}
+                        />
                       ) : (
                         item.tasks.items.map((task) => (
                           <article className={styles.review} key={task.id}>
@@ -287,8 +299,8 @@ function Detail({
                             </Link>
                             <p>
                               {taskStatusLabels[task.status]}
-                              {task.blocked ? ' · 阻塞' : ''} · {task.assignee?.name ?? '待分配'} ·{' '}
-                              {task.dueDate ?? '无截止日'}
+                              {task.blocked ? t(' · 阻塞') : ''} ·{' '}
+                              {task.assignee?.name ?? t('待分配')} · {task.dueDate ?? t('无截止日')}
                             </p>
                           </article>
                         ))
@@ -307,48 +319,53 @@ function Detail({
                 },
                 {
                   key: 'changes',
-                  label: `修订与影响 (${item.changes.total})`,
+                  label: t('修订与影响 ({{0}})', { '0': item.changes.total }),
                   children: (
                     <>
                       {item.baseline && (
                         <details>
-                          <summary>查看最近确认基线 · 版本 {item.baseline.revision}</summary>
+                          <summary>
+                            {t('查看最近确认基线 · 版本 ')}
+                            {item.baseline.revision}
+                          </summary>
                           <h4>{item.baseline.title}</h4>
                           <p className={styles.content}>{item.baseline.description}</p>
-                          <h4>验收标准</h4>
+                          <h4>{t('验收标准')}</h4>
                           <p className={styles.content}>{item.baseline.acceptanceCriteria}</p>
                         </details>
                       )}
                       {!item.changes.total ? (
                         <Empty
                           image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description="尚未发起基线修订"
+                          description={t('尚未发起基线修订')}
                         />
                       ) : (
                         item.changes.items.map((change) => (
                           <article key={change.id} className={styles.review}>
                             <strong>
-                              版本 {change.fromRevision} → {change.toRevision}
+                              {t('版本 ')}
+                              {change.fromRevision} → {change.toRevision}
                             </strong>{' '}
                             · {change.actor.name}
                             <p className={styles.muted}>{formatTime(change.createdAt)}</p>
-                            <h4>修订原因</h4>
+                            <h4>{t('修订原因')}</h4>
                             <p className={styles.content}>{change.reason}</p>
-                            <h4>影响范围与处理安排</h4>
+                            <h4>{t('影响范围与处理安排')}</h4>
                             <p className={styles.content}>{change.impact}</p>
                             <p>
-                              影响 {change.affectedTaskIds.length}{' '}
-                              项任务；用例需复审，旧验收及发布检查依据已失效。
+                              {t('影响 ')}
+                              {change.affectedTaskIds.length}{' '}
+                              {t('项任务；用例需复审，旧验收及发布检查依据已失效。')}
                             </p>
                             <details>
-                              <summary>查看修订前后快照</summary>
-                              <h4>原验收标准</h4>
+                              <summary>{t('查看修订前后快照')}</summary>
+                              <h4>{t('原验收标准')}</h4>
                               <p className={styles.content}>{change.before.acceptanceCriteria}</p>
-                              <h4>新验收标准</h4>
+                              <h4>{t('新验收标准')}</h4>
                               <p className={styles.content}>{change.after.acceptanceCriteria}</p>
-                              <h4>原需求描述</h4>
+                              <h4>{t('原需求描述')}</h4>
                               <p className={styles.content}>{change.before.description}</p>
-                              <h4>新需求描述</h4>
+                              <h4>{t('新需求描述')}</h4>
                               <p className={styles.content}>{change.after.description}</p>
                             </details>
                           </article>
@@ -368,40 +385,48 @@ function Detail({
                 },
                 {
                   key: 'history',
-                  label: `评审历史 (${item.history.total})`,
+                  label: t('评审历史 ({{0}})', { '0': item.history.total }),
                   children: (
                     <>
                       {!item.history.total ? (
                         <Empty
                           image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description="提交评审后，将在这里保留每轮意见和需求快照"
+                          description={t('提交评审后，将在这里保留每轮意见和需求快照')}
                         />
                       ) : (
                         item.history.items.map((record) => (
                           <article className={styles.review} key={record.id}>
                             <Space wrap>
-                              <Tag>第 {record.round} 轮</Tag>
+                              <Tag>
+                                {t('第 ')}
+                                {record.round} {t(' 轮')}
+                              </Tag>
                               <strong>{historyLabels[record.action]}</strong>
                               <span>{record.actor.name}</span>
                             </Space>
                             <p className={styles.muted}>
-                              评审人：{record.reviewer.name} · {formatTime(record.createdAt)}
+                              {t('评审人：')}
+                              {record.reviewer.name} · {formatTime(record.createdAt)}
                             </p>
-                            <p className={styles.content}>{record.comment || '未补充意见'}</p>
+                            <p className={styles.content}>{record.comment || t('未补充意见')}</p>
                             <details>
-                              <summary>查看本轮需求快照 · 版本 {record.revision}</summary>
+                              <summary>
+                                {t('查看本轮需求快照 · 版本 ')}
+                                {record.revision}
+                              </summary>
                               <h4>
                                 {record.snapshot.code} · {record.snapshot.title}
                               </h4>
                               <p className={styles.muted}>
                                 {requirementTypeLabels[record.snapshot.type]} ·{' '}
-                                {requirementPriorityLabels[record.snapshot.priority]}优先级 ·
-                                负责人：{record.snapshot.owner?.name ?? '未指定'} · 迭代：
-                                {record.snapshot.iteration?.name ?? '未安排'}
+                                {requirementPriorityLabels[record.snapshot.priority]}
+                                {t('优先级 · 负责人：')}
+                                {record.snapshot.owner?.name ?? t('未指定')} {t(' · 迭代：')}
+                                {record.snapshot.iteration?.name ?? t('未安排')}
                               </p>
-                              <h4>需求描述</h4>
+                              <h4>{t('需求描述')}</h4>
                               <p className={styles.content}>{record.snapshot.description}</p>
-                              <h4>验收标准</h4>
+                              <h4>{t('验收标准')}</h4>
                               <p className={styles.content}>{record.snapshot.acceptanceCriteria}</p>
                             </details>
                           </article>
@@ -421,7 +446,7 @@ function Detail({
                 },
                 {
                   key: 'discussion',
-                  label: '讨论与附件',
+                  label: t('讨论与附件'),
                   children: (
                     <CollaborationPanel
                       projectId={project.id}
@@ -444,20 +469,20 @@ function Detail({
         confirmLoading={command.isPending}
         okText={action && actionLabels[action]}
         okButtonProps={{ 'aria-label': action ? actionLabels[action] : undefined }}
-        cancelText="取消"
+        cancelText={t('取消')}
         forceRender
       >
         {action === 'submit' ? (
           <p className={styles.muted}>
-            本轮评审将保存当前需求内容。请指定评审人，由对方确认或退回修改。
+            {t('本轮评审将保存当前需求内容。请指定评审人，由对方确认或退回修改。')}
           </p>
         ) : (
           <p className={styles.muted}>
             {action === 'approve'
-              ? '确认当前需求内容及验收标准，本轮内容将作为需求基线保留。'
+              ? t('确认当前需求内容及验收标准，本轮内容将作为需求基线保留。')
               : action === 'cancel'
-                ? '取消后将保留记录，并从迭代未完成工作中移除。'
-                : '请记录原因，方便团队接续修改和安排。'}
+                ? t('取消后将保留记录，并从迭代未完成工作中移除。')
+                : t('请记录原因，方便团队接续修改和安排。')}
           </p>
         )}
         {command.isError && <Alert type="error" showIcon title={errorMessage(command.error)} />}
@@ -475,18 +500,18 @@ function Detail({
           {action === 'submit' && (
             <Form.Item
               name="reviewerId"
-              label="指定评审人"
-              rules={[{ required: true, message: '请选择评审人' }]}
+              label={t('指定评审人')}
+              rules={[{ required: true, message: t('请选择评审人') }]}
             >
               <RequirementPicker projectId={project.id} session={session} purpose="reviewer" />
             </Form.Item>
           )}
           <Form.Item
             name="comment"
-            label={requiresReason ? '原因 / 评审意见' : '补充说明'}
+            label={requiresReason ? t('原因 / 评审意见') : t('补充说明')}
             rules={
               requiresReason
-                ? [{ required: true, whitespace: true, message: '请填写原因或评审意见' }]
+                ? [{ required: true, whitespace: true, message: t('请填写原因或评审意见') }]
                 : []
             }
           >
@@ -504,6 +529,7 @@ export function ProjectRequirements({
   project: Project;
   session: SessionResponse;
 }) {
+  useLocale();
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('rq') ?? '');
   const [editor, setEditor] = useState<Requirement | 'new' | null>(null);
@@ -542,17 +568,17 @@ export function ProjectRequirements({
     <>
       <div className={styles.heading}>
         <div>
-          <h2>需求管理</h2>
-          <p className={styles.muted}>把想法写清楚，让评审结论有据可查。</p>
+          <h2>{t('需求管理')}</h2>
+          <p className={styles.muted}>{t('把想法写清楚，让评审结论有据可查。')}</p>
         </div>
         {list.data?.canCreate && (
           <Button
             type="primary"
-            aria-label="新建需求"
+            aria-label={t('新建需求')}
             icon={<PlusOutlined aria-hidden />}
             onClick={() => setEditor('new')}
           >
-            新建需求
+            {t('新建需求')}
           </Button>
         )}
       </div>
@@ -560,8 +586,8 @@ export function ProjectRequirements({
         <Input
           style={{ width: 250 }}
           prefix={<SearchOutlined />}
-          aria-label="搜索需求"
-          placeholder="搜索标题、编号或描述"
+          aria-label={t('搜索需求')}
+          placeholder={t('搜索标题、编号或描述')}
           value={search}
           maxLength={100}
           allowClear
@@ -571,12 +597,12 @@ export function ProjectRequirements({
           }}
           onPressEnter={() => set('rq', search.trim())}
         />
-        <Button aria-label="搜索" onClick={() => set('rq', search.trim())}>
-          搜索
+        <Button aria-label={t('搜索')} onClick={() => set('rq', search.trim())}>
+          {t('搜索')}
         </Button>
         <Select
-          aria-label="需求状态筛选"
-          placeholder="全部状态"
+          aria-label={t('需求状态筛选')}
+          placeholder={t('全部状态')}
           allowClear
           style={{ width: 130 }}
           value={status.success ? status.data : undefined}
@@ -587,8 +613,8 @@ export function ProjectRequirements({
           onChange={(value) => set('rs', value)}
         />
         <Select
-          aria-label="需求优先级筛选"
-          placeholder="全部优先级"
+          aria-label={t('需求优先级筛选')}
+          placeholder={t('全部优先级')}
           allowClear
           style={{ width: 140 }}
           value={priority.success ? priority.data : undefined}
@@ -599,8 +625,8 @@ export function ProjectRequirements({
           onChange={(value) => set('rpriority', value)}
         />
         <Select
-          aria-label="需求类型筛选"
-          placeholder="全部类型"
+          aria-label={t('需求类型筛选')}
+          placeholder={t('全部类型')}
           allowClear
           style={{ width: 140 }}
           value={type.success ? type.data : undefined}
@@ -612,7 +638,7 @@ export function ProjectRequirements({
         />
         <div style={{ width: 175 }}>
           <RequirementPicker
-            aria-label="需求负责人筛选"
+            aria-label={t('需求负责人筛选')}
             projectId={project.id}
             session={session}
             purpose="filterOwner"
@@ -622,7 +648,7 @@ export function ProjectRequirements({
         </div>
         <div style={{ width: 175 }}>
           <RequirementPicker
-            aria-label="需求迭代筛选"
+            aria-label={t('需求迭代筛选')}
             projectId={project.id}
             session={session}
             purpose="filterIteration"
@@ -643,7 +669,7 @@ export function ProjectRequirements({
               })
             }
           >
-            清除筛选
+            {t('清除筛选')}
           </Button>
         )}
       </div>
@@ -652,7 +678,7 @@ export function ProjectRequirements({
           type="error"
           showIcon
           title={errorMessage(list.error)}
-          action={<Button onClick={() => void list.refetch()}>重新加载需求列表</Button>}
+          action={<Button onClick={() => void list.refetch()}>{t('重新加载需求列表')}</Button>}
         />
       ) : list.data && list.data.total > 0 && !list.data.items.length ? (
         <EmptyPage onReset={() => set('rp', null)} />
@@ -665,12 +691,12 @@ export function ProjectRequirements({
           scroll={{ x: 800 }}
           locale={{
             emptyText: (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无符合条件的需求" />
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无符合条件的需求')} />
             ),
           }}
           columns={[
             {
-              title: '需求',
+              title: t('需求'),
               key: 'title',
               render: (_, item) => (
                 <>
@@ -686,28 +712,28 @@ export function ProjectRequirements({
               ),
             },
             {
-              title: '状态',
+              title: t('状态'),
               key: 'status',
               width: 110,
               render: (_, item) => <Status item={item} />,
             },
             {
-              title: '优先级',
+              title: t('优先级'),
               dataIndex: 'priority',
               width: 90,
               render: (value: Requirement['priority']) => requirementPriorityLabels[value],
             },
             {
-              title: '负责人',
+              title: t('负责人'),
               key: 'owner',
               width: 120,
-              render: (_, item) => item.owner?.name ?? '未指定',
+              render: (_, item) => item.owner?.name ?? t('未指定'),
             },
             {
-              title: '迭代',
+              title: t('迭代'),
               key: 'iteration',
               width: 180,
-              render: (_, item) => item.iteration?.name ?? '未安排',
+              render: (_, item) => item.iteration?.name ?? t('未安排'),
             },
           ]}
         />
@@ -719,7 +745,7 @@ export function ProjectRequirements({
           pageSize={20}
           total={list.data.total}
           showSizeChanger={false}
-          showTotal={(total) => `共 ${total} 条需求`}
+          showTotal={(total) => t('共 {{0}} 条需求', { '0': total })}
           onChange={(value) => set('rp', String(value))}
         />
       )}

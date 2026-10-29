@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useLocation, useMatch, useNavigate } from 'react-router';
@@ -6,6 +7,7 @@ import type { SessionResponse } from '@myteam/contracts';
 import { loadProject, loadProjects, projectKey } from './api';
 import { ProjectIcon } from './presentation';
 export function ProjectSwitcher({ session }: { session: SessionResponse }) {
+  useLocale();
   const navigate = useNavigate();
   const location = useLocation();
   const id = useMatch('/projects/:projectId')?.params.projectId ?? '';
@@ -51,8 +53,8 @@ export function ProjectSwitcher({ session }: { session: SessionResponse }) {
   return (
     <Select
       className="project-switcher"
-      aria-label="切换项目"
-      placeholder="选择项目空间"
+      aria-label={t('切换项目')}
+      placeholder={t('选择项目空间')}
       showSearch
       filterOption={false}
       labelInValue
@@ -63,10 +65,10 @@ export function ProjectSwitcher({ session }: { session: SessionResponse }) {
           ? {
               value: id,
               label: current.isError
-                ? '项目不可访问'
+                ? t('项目不可访问')
                 : (items.find((project) => project.id === id)?.name ??
                   current.data?.name ??
-                  '正在加载项目…'),
+                  t('正在加载项目…')),
             }
           : undefined
       }
@@ -123,10 +125,10 @@ export function ProjectSwitcher({ session }: { session: SessionResponse }) {
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
               projects.isError
-                ? '项目加载失败，请重试'
+                ? t('项目加载失败，请重试')
                 : query
-                  ? '没有匹配的项目'
-                  : '暂无可访问项目'
+                  ? t('没有匹配的项目')
+                  : t('暂无可访问项目')
             }
           />
         )
@@ -151,12 +153,14 @@ export function ProjectSwitcher({ session }: { session: SessionResponse }) {
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => void projects.refetch()}
               >
-                重试加载项目
+                {t('重试加载项目')}
               </Button>
             ) : (
               <>
                 <span>
-                  {searching ? '正在加载项目…' : `共 ${projects.data?.pages[0]?.total ?? 0} 个项目`}
+                  {searching
+                    ? t('正在加载项目…')
+                    : t('共 {{0}} 个项目', { '0': projects.data?.pages[0]?.total ?? 0 })}
                 </span>
                 {projects.hasNextPage && (
                   <Button
@@ -166,7 +170,7 @@ export function ProjectSwitcher({ session }: { session: SessionResponse }) {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void projects.fetchNextPage()}
                   >
-                    加载更多项目
+                    {t('加载更多项目')}
                   </Button>
                 )}
               </>

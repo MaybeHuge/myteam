@@ -1,12 +1,8 @@
+import { taskPriorityLabels } from '../../i18n/labels';
+import { t, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { Alert, App, Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
-import {
-  taskPriorityLabels,
-  type Task,
-  type Project,
-  type Requirement,
-  type SessionResponse,
-} from '@myteam/contracts';
+import { type Task, type Project, type Requirement, type SessionResponse } from '@myteam/contracts';
 import { errorMessage } from '../../api/client';
 import { useProjectCommand } from '../projects/api';
 import { RequirementPicker } from '../requirements/RequirementPicker';
@@ -27,12 +23,13 @@ export function TaskEditor({
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
+  useLocale();
   const [form] = Form.useForm(),
     iterationId = Form.useWatch('iterationId', form);
   const [pickedIteration, setPickedIteration] = useState(item?.iteration ?? requirement?.iteration);
   const { message } = App.useApp();
   const command = useProjectCommand<{ id: string }>(session, (result) => {
-    void message.success(item ? '任务已保存' : '任务已创建');
+    void message.success(item ? t('任务已保存') : t('任务已创建'));
     onClose();
     if (!item) onCreated(result.id);
   });
@@ -40,26 +37,28 @@ export function TaskEditor({
     <Drawer
       open
       size={620}
-      title={item ? '编辑任务' : '拆分新任务'}
+      title={item ? t('编辑任务') : t('拆分新任务')}
       onClose={onClose}
       footer={
         <div className={styles.footer}>
-          <span>明确下一步的交付工作</span>
+          <span>{t('明确下一步的交付工作')}</span>
           <Space>
-            <Button onClick={onClose}>取消</Button>
+            <Button onClick={onClose}>{t('取消')}</Button>
             <Button
-              aria-label={item ? '保存任务' : '创建任务'}
+              aria-label={item ? t('保存任务') : t('创建任务')}
               type="primary"
               loading={command.isPending}
               onClick={() => form.submit()}
             >
-              {item ? '保存任务' : '创建任务'}
+              {item ? t('保存任务') : t('创建任务')}
             </Button>
           </Space>
         </div>
       }
     >
-      <p className={styles.muted}>任务先安排为待开始。关联需求确认后，由任务负责人开始推进。</p>
+      <p className={styles.muted}>
+        {t('任务先安排为待开始。关联需求确认后，由任务负责人开始推进。')}
+      </p>
       {command.isError && <Alert type="error" showIcon title={errorMessage(command.error)} />}
       <Form
         form={form}
@@ -91,7 +90,7 @@ export function TaskEditor({
         }
       >
         {item ? (
-          <Form.Item label="关联需求">
+          <Form.Item label={t('关联需求')}>
             <span>
               {item.requirement.code} · {item.requirement.title}
             </span>
@@ -99,8 +98,8 @@ export function TaskEditor({
         ) : (
           <Form.Item
             name="requirementId"
-            label="关联需求"
-            rules={[{ required: true, message: '请选择本项目需求' }]}
+            label={t('关联需求')}
+            rules={[{ required: true, message: t('请选择本项目需求') }]}
           >
             <TaskPicker
               projectId={project.id}
@@ -120,21 +119,21 @@ export function TaskEditor({
         )}
         <Form.Item
           name="title"
-          label="任务标题"
-          rules={[{ required: true, whitespace: true, message: '请填写任务标题' }]}
+          label={t('任务标题')}
+          rules={[{ required: true, whitespace: true, message: t('请填写任务标题') }]}
         >
-          <Input autoFocus maxLength={200} placeholder="例如：实现客户资料搜索接口" />
+          <Input autoFocus maxLength={200} placeholder={t('例如：实现客户资料搜索接口')} />
         </Form.Item>
-        <Form.Item name="description" label="任务说明">
+        <Form.Item name="description" label={t('任务说明')}>
           <Input.TextArea
             rows={5}
             maxLength={10000}
             showCount
-            placeholder="记录实现范围、交付结果和需要关注的细节"
+            placeholder={t('记录实现范围、交付结果和需要关注的细节')}
           />
         </Form.Item>
         <div className={styles.twoColumns}>
-          <Form.Item name="priority" label="任务优先级">
+          <Form.Item name="priority" label={t('任务优先级')}>
             <Select
               options={Object.entries(taskPriorityLabels).map(([value, label]) => ({
                 value,
@@ -144,28 +143,28 @@ export function TaskEditor({
           </Form.Item>
           <Form.Item
             name="estimatedHours"
-            label="估算工时（小时）"
-            extra="可留空，按 0.25 小时填写。"
+            label={t('估算工时（小时）')}
+            extra={t('可留空，按 0.25 小时填写。')}
           >
             <InputNumber min={0} max={10000} step={0.25} precision={2} style={{ width: '100%' }} />
           </Form.Item>
         </div>
-        <Form.Item name="dueDate" label="截止日期">
+        <Form.Item name="dueDate" label={t('截止日期')}>
           <Input type="date" />
         </Form.Item>
         {!item && (
           <Form.Item
             name="assigneeId"
-            label="任务负责人"
-            extra="可先不分配；开发人员可分配给自己，负责人可分配给其他成员。"
+            label={t('任务负责人')}
+            extra={t('可先不分配；开发人员可分配给自己，负责人可分配给其他成员。')}
           >
             <TaskPicker projectId={project.id} session={session} purpose="people" />
           </Form.Item>
         )}
         <Form.Item
           name="iterationId"
-          label="任务所属迭代"
-          extra="新建时默认沿用需求迭代，也可按任务安排选择其他未关闭迭代。"
+          label={t('任务所属迭代')}
+          extra={t('新建时默认沿用需求迭代，也可按任务安排选择其他未关闭迭代。')}
         >
           <RequirementPicker
             key={pickedIteration?.id ?? 'none'}
@@ -178,8 +177,8 @@ export function TaskEditor({
         {item && (iterationId ?? null) !== (item.iteration?.id ?? null) && (
           <Form.Item
             name="changeReason"
-            label="任务迭代调整原因"
-            rules={[{ required: true, whitespace: true, message: '请填写调整原因' }]}
+            label={t('任务迭代调整原因')}
+            rules={[{ required: true, whitespace: true, message: t('请填写调整原因') }]}
           >
             <Input.TextArea rows={2} maxLength={500} />
           </Form.Item>

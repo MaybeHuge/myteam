@@ -1,3 +1,5 @@
+import { qualityLabels } from '../../i18n/labels';
+import { t, localizeLabels, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -18,12 +20,10 @@ import {
 import { PlusOutlined } from '@ant-design/icons';
 import {
   hasPermission,
-  qualityLabels,
   releaseListSchema,
   releaseDetailSchema,
   defectListSchema,
   defectDetailSchema,
-  releaseStatusSchema,
   defectStatusSchema,
   type Project,
   type SessionResponse,
@@ -34,13 +34,25 @@ import { projectKey } from '../projects/api';
 import { CollaborationPanel, formatTime } from '../collaboration/CollaborationPanel';
 import { QualityModal, actionLabels, type Operation } from './QualityModal';
 import { AttachmentImages } from './AttachmentImages';
+import { ReleasePublication } from './ReleasePublication';
 import { CreateTestRecord, RecordStatus, type RecordSeed } from './ProjectTestRecords';
 import styles from './quality.module.css';
 type Common = { project: Project; session: SessionResponse };
 type ReleaseDetail = z.infer<typeof releaseDetailSchema>;
 type DefectDetail = z.infer<typeof defectDetailSchema>;
 type Mode = 'releases' | 'defects';
+const releaseStatusLabel = (status: string) =>
+  status === 'RELEASED' ? t('已发布') : status === 'ARCHIVED' ? t('已归档') : t('未发布');
+const activityLabels: Record<string, string> = localizeLabels({
+  'release.created': '创建版本',
+  'release.updated': '更新版本',
+  'build.created': '登记构建',
+  'release.published': '登记发布结果',
+  'release.followup': '登记上线验证或回滚',
+  'defect.updateFixBuild': '更新修复构建',
+});
 function Status({ status }: { status: string }) {
+  useLocale();
   return (
     <Tag
       color={
@@ -62,6 +74,7 @@ function Detail({
   onOperation,
   ...props
 }: Common & { mode: Mode; id: string; onClose: () => void; onOperation: (op: Operation) => void }) {
+  useLocale();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [seed, setSeed] = useState<RecordSeed | null>(null);
@@ -132,7 +145,7 @@ function Detail({
       <Drawer
         open
         size="min(800px, 100vw)"
-        title={mode === 'releases' ? '版本详情' : '缺陷详情'}
+        title={mode === 'releases' ? t('版本详情') : t('缺陷详情')}
         onClose={onClose}
       >
         {detail.isPending ? (
@@ -142,14 +155,14 @@ function Detail({
             type="error"
             showIcon
             title={errorMessage(detail.error)}
-            action={<Button onClick={() => void detail.refetch()}>重新加载详情</Button>}
+            action={<Button onClick={() => void detail.refetch()}>{t('重新加载详情')}</Button>}
           />
         ) : (
           <>
             {defect ? (
               <div className={styles.defectHeader}>
                 <div className={styles.defectCode}>
-                  {defect.code} · {defect.source === 'PRODUCTION' ? '生产发现' : '测试发现'}
+                  {defect.code} · {defect.source === 'PRODUCTION' ? t('生产发现') : t('测试发现')}
                 </div>
                 <h2>{defect.title}</h2>
                 <div className={styles.headerTags}>
@@ -160,7 +173,9 @@ function Detail({
             ) : (
               <>
                 <h2>{release?.name}</h2>
-                <Status status={row.status} />
+                <Tag color={row.status === 'RELEASED' ? 'green' : 'default'}>
+                  {releaseStatusLabel(row.status)}
+                </Tag>
               </>
             )}
             <Space wrap style={{ display: 'flex', margin: '16px 0' }}>
@@ -178,9 +193,11 @@ function Detail({
                     }
                     onClick={() => act(action)}
                   >
-                    {action === 'retest' && defect?.testCases.length
-                      ? '发起复测'
-                      : (actionLabels[action] ?? action)}
+                    {action === 'update' && release
+                      ? t('编辑版本')
+                      : action === 'retest' && defect?.testCases.length
+                        ? t('发起复测')
+                        : (actionLabels[action] ?? action)}
                   </Button>
                 ))}
             </Space>
@@ -188,12 +205,15 @@ function Detail({
               items={[
                 {
                   key: 'content',
-                  label: defect ? '问题详情' : '内容与记录',
+                  label: defect ? t('问题详情') : t('内容与记录'),
                   children: (
                     <>
                       {release && (
                         <>
-                          <h3>交付范围 · 第 {release.scopeVersion} 版</h3>
+                          <h3>
+                            {t('交付范围 · 第 ')}
+                            {release.scopeVersion} {t(' 版')}
+                          </h3>
                           <p>{release.description}</p>
                           {release.scope.map((w) => (
                             <p key={w.id}>
@@ -205,8 +225,9 @@ function Detail({
                             </p>
                           ))}
                           <Space>
-                            <h3>构建记录</h3>
+                            <h3>{t('构建记录')}</h3>
                             {props.project.status === 'ACTIVE' &&
+                              !['READY', 'RELEASED', 'ARCHIVED'].includes(release.status) &&
                               (props.session.user.isSystemAdmin ||
                                 hasPermission(props.project.myRoles, 'submission:write') ||
                                 hasPermission(props.project.myRoles, 'release:manage')) && (
@@ -219,12 +240,15 @@ function Detail({
                                     })
                                   }
                                 >
-                                  登记构建
+                                  {t('登记构建')}
                                 </Button>
                               )}
                           </Space>
                           {!release.builds.total && (
-                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无构建" />
+                            <Empty
+                              image={Empty.PRESENTED_IMAGE_SIMPLE}
+                              description={t('暂无构建')}
+                            />
                           )}
                           {release.builds.items.map((b) => (
                             <article className={styles.card} key={b.id}>
@@ -232,12 +256,12 @@ function Detail({
                               <p>{b.notes}</p>
                               {b.codeUrl && (
                                 <a href={b.codeUrl} target="_blank" rel="noreferrer">
-                                  代码链接
+                                  {t('代码链接')}
                                 </a>
                               )}{' '}
                               {b.artifactUrl && (
                                 <a href={b.artifactUrl} target="_blank" rel="noreferrer">
-                                  产物链接
+                                  {t('产物链接')}
                                 </a>
                               )}
                               <p>{formatTime(b.createdAt)}</p>
@@ -251,6 +275,11 @@ function Detail({
                             showSizeChanger={false}
                             onChange={setPage}
                           />
+                          <ReleasePublication
+                            project={props.project}
+                            session={props.session}
+                            release={release}
+                          />
                         </>
                       )}
                       {defect && (
@@ -259,74 +288,74 @@ function Detail({
                             <Alert
                               type="warning"
                               showIcon
-                              title="此缺陷已延期，仍未修复"
-                              description={defect.deferUntil ?? '请跟进目标版本'}
+                              title={t('此缺陷已延期，仍未修复')}
+                              description={defect.deferUntil ?? t('请跟进目标版本')}
                             />
                           )}
                           <section className={styles.detailSection}>
-                            <h3>问题描述</h3>
+                            <h3>{t('问题描述')}</h3>
                             <div className={styles.descriptionBlock}>
-                              <h4>复现步骤</h4>
+                              <h4>{t('复现步骤')}</h4>
                               <p className={styles.content}>{defect.reproduction}</p>
                             </div>
                             <div className={styles.behaviorGrid}>
                               <div className={styles.descriptionBlock}>
-                                <h4>预期表现</h4>
+                                <h4>{t('预期表现')}</h4>
                                 <p className={styles.content}>{defect.expected}</p>
                               </div>
                               <div className={styles.descriptionBlock}>
-                                <h4>实际表现</h4>
+                                <h4>{t('实际表现')}</h4>
                                 <p className={styles.content}>{defect.actual}</p>
                               </div>
                             </div>
                             <div className={styles.environment}>
-                              <span>发现环境</span>
+                              <span>{t('发现环境')}</span>
                               <p className={styles.content}>{defect.environment}</p>
                             </div>
                             <AttachmentImages
                               id={id}
                               targetType="DEFECT"
-                              title="问题截图"
+                              title={t('问题截图')}
                               {...props}
                             />
                           </section>
                           <section className={styles.detailSection}>
-                            <h3>处理概览</h3>
+                            <h3>{t('处理概览')}</h3>
                             <dl className={styles.facts}>
                               <div>
-                                <dt>开发负责人</dt>
+                                <dt>{t('开发负责人')}</dt>
                                 <dd>{defect.assignee.name}</dd>
                               </div>
                               <div>
-                                <dt>复测负责人</dt>
+                                <dt>{t('复测负责人')}</dt>
                                 <dd>{defect.retester.name}</dd>
                               </div>
                               <div>
-                                <dt>关联需求</dt>
+                                <dt>{t('关联需求')}</dt>
                                 <dd>
                                   <Link
                                     to={`/projects/${props.project.id}?tab=requirements&requirement=${defect.requirementId}`}
                                   >
-                                    查看需求
+                                    {t('查看需求')}
                                   </Link>
                                 </dd>
                               </div>
                               <div>
-                                <dt>发现构建</dt>
-                                <dd>{defect.foundBuildIdentifier ?? '未指定'}</dd>
+                                <dt>{t('发现构建')}</dt>
+                                <dd>{defect.foundBuildIdentifier ?? t('未指定')}</dd>
                               </div>
                               <div>
-                                <dt>修复构建</dt>
-                                <dd>{defect.fixedBuildIdentifier ?? '未指定'}</dd>
+                                <dt>{t('修复构建')}</dt>
+                                <dd>{defect.fixedBuildIdentifier ?? t('未指定')}</dd>
                               </div>
                               {defect.duplicateOfId && (
                                 <div>
-                                  <dt>主缺陷</dt>
+                                  <dt>{t('主缺陷')}</dt>
                                   <dd>
                                     <Link
                                       to={`/projects/${props.project.id}?tab=defects&defect=${defect.duplicateOfId}`}
                                     >
-                                      查看主缺陷
+                                      {t('查看主缺陷')}
                                     </Link>
                                   </dd>
                                 </div>
@@ -342,10 +371,10 @@ function Detail({
                   ? [
                       {
                         key: 'related',
-                        label: '关联与处理记录',
+                        label: t('关联与处理记录'),
                         children: (
                           <div className={styles.relatedSection}>
-                            <h3>关联测试用例</h3>
+                            <h3>{t('关联测试用例')}</h3>
                             {defect.testCases.length ? (
                               <Space wrap>
                                 {defect.testCases.map((c) => (
@@ -358,9 +387,9 @@ function Detail({
                                 ))}
                               </Space>
                             ) : (
-                              <p>未关联用例</p>
+                              <p>{t('未关联用例')}</p>
                             )}
-                            <h3>关联测试记录</h3>
+                            <h3>{t('关联测试记录')}</h3>
                             {defect.testRecords.length ? (
                               defect.testRecords.map((r) => (
                                 <p key={r.id}>
@@ -373,9 +402,12 @@ function Detail({
                                 </p>
                               ))
                             ) : (
-                              <p>未关联测试记录</p>
+                              <p>{t('未关联测试记录')}</p>
                             )}
-                            <h3>修复及复测历史（{defect.dispositions.total}）</h3>
+                            <h3>
+                              {t('修复及复测历史（')}
+                              {defect.dispositions.total}）
+                            </h3>
                             {defect.dispositions.items.map((d) => (
                               <article key={d.id} className={styles.history}>
                                 <Space>
@@ -406,25 +438,25 @@ function Detail({
                   : []),
                 {
                   key: 'history',
-                  label: `活动记录 (${row.history.total})`,
+                  label: t('活动记录 ({{0}})', { '0': row.history.total }),
                   children: row.history.items.map((h) => (
                     <article className={styles.history} key={h.id}>
-                      <strong>{h.actor?.name ?? '历史成员'}</strong> · {formatTime(h.createdAt)}
+                      <strong>{h.actor?.name ?? t('历史成员')}</strong> · {formatTime(h.createdAt)}
                       <p>
                         {h.action === 'defect.created'
                           ? h.details &&
                             typeof h.details === 'object' &&
                             'testRecordId' in h.details
-                            ? '测试失败自动创建缺陷'
-                            : '创建缺陷'
-                          : h.action}
+                            ? t('测试失败自动创建缺陷')
+                            : t('创建缺陷')
+                          : (activityLabels[h.action] ?? h.action)}
                       </p>
                     </article>
                   )),
                 },
                 {
                   key: 'collaboration',
-                  label: '讨论与附件',
+                  label: t('讨论与附件'),
                   children: (
                     <CollaborationPanel
                       projectId={props.project.id}
@@ -453,6 +485,7 @@ function Detail({
   );
 }
 export function ProjectQuality({ mode, project, session }: Common & { mode: Mode }) {
+  useLocale();
   const [params, setParams] = useSearchParams();
   const [operation, setOperation] = useState<Operation | null>(null);
   const key = mode === 'releases' ? 'release' : 'defect';
@@ -481,7 +514,7 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
         else next.delete(k);
       return next;
     });
-  const title = mode === 'releases' ? '版本与构建' : '缺陷管理';
+  const title = mode === 'releases' ? t('版本与构建') : t('缺陷管理');
   return (
     <section>
       <div className={styles.heading}>
@@ -489,8 +522,8 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
           <h2>{title}</h2>
           <p>
             {mode === 'releases'
-              ? '管理交付范围和构建来源。'
-              : '记录问题、修复和复测，关联用例与测试记录。'}
+              ? t('管理交付范围和构建来源。')
+              : t('记录问题、修复和复测，关联用例与测试记录。')}
           </p>
         </div>
         {list.data?.canCreate && (
@@ -499,28 +532,35 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
             icon={<PlusOutlined />}
             onClick={() => setOperation({ entity: mode, action: 'create' })}
           >
-            {mode === 'releases' ? '新建版本' : '报告缺陷'}
+            {mode === 'releases' ? t('新建版本') : t('报告缺陷')}
           </Button>
         )}
       </div>
       <Space wrap style={{ marginBottom: 18 }}>
         <Input.Search
-          aria-label="搜索质量记录"
-          placeholder="搜索标题"
+          aria-label={t('搜索质量记录')}
+          placeholder={t('搜索标题')}
           defaultValue={q}
           onSearch={(v) => set({ qq: v, qp: null })}
           allowClear
         />
         <Select
-          aria-label="质量状态筛选"
-          placeholder="全部状态"
+          aria-label={t('质量状态筛选')}
+          placeholder={t('全部状态')}
           allowClear
           value={status || undefined}
           style={{ width: 160 }}
-          options={(mode === 'releases'
-            ? releaseStatusSchema.options
-            : defectStatusSchema.options
-          ).map((value) => ({ value, label: qualityLabels[value] ?? value }))}
+          options={
+            mode === 'releases'
+              ? [
+                  { value: 'UNRELEASED', label: t('未发布') },
+                  { value: 'RELEASED', label: t('已发布') },
+                ]
+              : defectStatusSchema.options.map((value) => ({
+                  value,
+                  label: qualityLabels[value] ?? value,
+                }))
+          }
           onChange={(v) => set({ qs: v ?? null, qp: null })}
         />
       </Space>
@@ -529,7 +569,7 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
           type="error"
           showIcon
           title={errorMessage(list.error)}
-          action={<Button onClick={() => void list.refetch()}>重新加载列表</Button>}
+          action={<Button onClick={() => void list.refetch()}>{t('重新加载列表')}</Button>}
         />
       ) : (
         <Table<{
@@ -549,7 +589,7 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
           scroll={{ x: 660 }}
           columns={[
             {
-              title: mode === 'releases' ? '版本' : '缺陷',
+              title: mode === 'releases' ? t('版本') : t('缺陷'),
               key: 'title',
               render: (_, r) => (
                 <>
@@ -560,24 +600,35 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
                 </>
               ),
             },
-            { title: '状态', key: 'status', render: (_, r) => <Status status={r.status} /> },
+            {
+              title: t('状态'),
+              key: 'status',
+              render: (_, r) =>
+                mode === 'releases' ? (
+                  <Tag color={r.status === 'RELEASED' ? 'green' : 'default'}>
+                    {releaseStatusLabel(r.status)}
+                  </Tag>
+                ) : (
+                  <Status status={r.status} />
+                ),
+            },
             ...(mode === 'defects'
               ? [
                   {
-                    title: '严重程度',
+                    title: t('严重程度'),
                     key: 'severity',
                     render: (_: unknown, r: { severity?: string }) => (
                       <Status status={r.severity ?? ''} />
                     ),
                   },
                   {
-                    title: '负责人',
+                    title: t('负责人'),
                     key: 'assignee',
                     render: (_: unknown, r: { assignee?: { name: string } }) => r.assignee?.name,
                   },
                 ]
               : []),
-            { title: '创建时间', dataIndex: 'createdAt', render: formatTime },
+            { title: t('创建时间'), dataIndex: 'createdAt', render: formatTime },
           ]}
         />
       )}

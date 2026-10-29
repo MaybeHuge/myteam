@@ -1,3 +1,5 @@
+import { requirementPriorityLabels } from '../../i18n/labels';
+import { t, useLocale } from '../../i18n';
 import { Alert, App, Button, Drawer, Form, Input, Select, Space, Skeleton } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -7,7 +9,6 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import {
-  requirementPriorityLabels,
   type CreateTestCase,
   type Project,
   type TestCase,
@@ -35,6 +36,7 @@ export function CaseEditor({
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
+  useLocale();
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const initialRequirement = useQuery({
@@ -47,38 +49,38 @@ export function CaseEditor({
     enabled: !!requirementId && !item,
   });
   const command = useProjectCommand<{ id: string }>(session, (result) => {
-    void message.success(revision ? '新修订已保存，请重新评审' : '用例草稿已保存');
+    void message.success(revision ? t('新修订已保存，请重新评审') : t('用例草稿已保存'));
     onSaved(result.id);
   });
   return (
     <Drawer
       open
       size={720}
-      title={revision ? '修订用例' : item ? '编辑用例草稿' : '新建用例'}
+      title={revision ? t('修订用例') : item ? t('编辑用例草稿') : t('新建用例')}
       onClose={onClose}
       footer={
         <Space wrap>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={onClose}>{t('取消')}</Button>
           <Button
             type="primary"
-            aria-label={revision ? '保存用例修订' : item ? '保存用例' : '创建用例'}
+            aria-label={revision ? t('保存用例修订') : item ? t('保存用例') : t('创建用例')}
             loading={command.isPending}
             disabled={!!requirementId && !item && !initialRequirement.data}
             onClick={() => form.submit()}
           >
-            {revision ? '保存用例修订' : item ? '保存用例' : '创建用例'}
+            {revision ? t('保存用例修订') : item ? t('保存用例') : t('创建用例')}
           </Button>
         </Space>
       }
     >
       <p className={styles.muted}>
-        草稿可以逐步完善。送审前请指定负责人，并为每个步骤填写操作与预期结果。
+        {t('草稿可以逐步完善。送审前请指定负责人，并为每个步骤填写操作与预期结果。')}
       </p>
       {revision && (
         <Alert
           type="warning"
           showIcon
-          title="保存后进入草稿，重新通过评审后才可使用。旧修订和评审结论将保留。"
+          title={t('保存后进入草稿，重新通过评审后才可使用。旧修订和评审结论将保留。')}
         />
       )}
       {command.isError && <Alert type="error" showIcon title={errorMessage(command.error)} />}
@@ -88,7 +90,9 @@ export function CaseEditor({
         <Alert
           type="error"
           title={errorMessage(initialRequirement.error)}
-          action={<Button onClick={() => void initialRequirement.refetch()}>重新加载需求</Button>}
+          action={
+            <Button onClick={() => void initialRequirement.refetch()}>{t('重新加载需求')}</Button>
+          }
         />
       ) : (
         <Form
@@ -120,29 +124,33 @@ export function CaseEditor({
           {revision && (
             <Form.Item
               name="reason"
-              label="用例修订原因"
-              rules={[{ required: true, whitespace: true, message: '请填写修订原因' }]}
+              label={t('用例修订原因')}
+              rules={[{ required: true, whitespace: true, message: t('请填写修订原因') }]}
             >
               <Input.TextArea rows={2} maxLength={2000} />
             </Form.Item>
           )}
           <Form.Item
             name="title"
-            label="用例标题"
-            rules={[{ required: true, whitespace: true, message: '请填写用例标题' }]}
+            label={t('用例标题')}
+            rules={[{ required: true, whitespace: true, message: t('请填写用例标题') }]}
           >
-            <Input autoFocus maxLength={200} placeholder="例如：正确验证码可以完成手机号登录" />
+            <Input
+              autoFocus
+              maxLength={200}
+              placeholder={t('例如：正确验证码可以完成手机号登录')}
+            />
           </Form.Item>
           <Form.Item
             name="requirementIds"
-            label="关联需求"
+            label={t('关联需求')}
             rules={[
               {
                 required: true,
                 type: 'array',
                 min: 1,
                 max: 50,
-                message: '请关联 1 至 50 个已确认需求',
+                message: t('请关联 1 至 50 个已确认需求'),
               },
             ]}
           >
@@ -156,7 +164,7 @@ export function CaseEditor({
             />
           </Form.Item>
           <div className={styles.twoColumns}>
-            <Form.Item name="priority" label="用例优先级">
+            <Form.Item name="priority" label={t('用例优先级')}>
               <Select
                 options={Object.entries(requirementPriorityLabels).map(([value, label]) => ({
                   value,
@@ -164,7 +172,7 @@ export function CaseEditor({
                 }))}
               />
             </Form.Item>
-            <Form.Item name="ownerId" label="用例负责人">
+            <Form.Item name="ownerId" label={t('用例负责人')}>
               <CasePicker
                 projectId={project.id}
                 session={session}
@@ -175,26 +183,33 @@ export function CaseEditor({
               />
             </Form.Item>
           </div>
-          <Form.Item name="preconditions" label="前置条件">
+          <Form.Item name="preconditions" label={t('前置条件')}>
             <Input.TextArea
               rows={3}
               maxLength={5000}
-              placeholder="例如：已有可用测试账号，已收到有效验证码"
+              placeholder={t('例如：已有可用测试账号，已收到有效验证码')}
             />
           </Form.Item>
           <Form.List name="steps">
             {(fields, { add, remove, move }) => (
               <>
-                <h3>测试步骤与预期</h3>
+                <h3>{t('测试步骤与预期')}</h3>
                 {fields.map((field, index) => (
-                  <section className={styles.step} key={field.key} aria-label={`步骤 ${index + 1}`}>
+                  <section
+                    className={styles.step}
+                    key={field.key}
+                    aria-label={t('步骤 {{0}}', { '0': index + 1 })}
+                  >
                     <div className={styles.stepHeading}>
-                      <strong>步骤 {index + 1}</strong>
+                      <strong>
+                        {t('步骤 ')}
+                        {index + 1}
+                      </strong>
                       <Space>
                         <Button
                           type="text"
                           size="small"
-                          aria-label={`上移步骤 ${index + 1}`}
+                          aria-label={t('上移步骤 {{0}}', { '0': index + 1 })}
                           disabled={index === 0}
                           icon={<ArrowUpOutlined />}
                           onClick={() => move(index, index - 1)}
@@ -202,7 +217,7 @@ export function CaseEditor({
                         <Button
                           type="text"
                           size="small"
-                          aria-label={`下移步骤 ${index + 1}`}
+                          aria-label={t('下移步骤 {{0}}', { '0': index + 1 })}
                           disabled={index === fields.length - 1}
                           icon={<ArrowDownOutlined />}
                           onClick={() => move(index, index + 1)}
@@ -211,16 +226,22 @@ export function CaseEditor({
                           type="text"
                           size="small"
                           danger
-                          aria-label={`删除步骤 ${index + 1}`}
+                          aria-label={t('删除步骤 {{0}}', { '0': index + 1 })}
                           icon={<DeleteOutlined />}
                           onClick={() => remove(index)}
                         />
                       </Space>
                     </div>
-                    <Form.Item name={[field.name, 'action']} label={`步骤 ${index + 1} 操作`}>
+                    <Form.Item
+                      name={[field.name, 'action']}
+                      label={t('步骤 {{0}} 操作', { '0': index + 1 })}
+                    >
                       <Input.TextArea rows={2} maxLength={2000} />
                     </Form.Item>
-                    <Form.Item name={[field.name, 'expected']} label={`步骤 ${index + 1} 预期`}>
+                    <Form.Item
+                      name={[field.name, 'expected']}
+                      label={t('步骤 {{0}} 预期', { '0': index + 1 })}
+                    >
                       <Input.TextArea rows={2} maxLength={2000} />
                     </Form.Item>
                   </section>
@@ -228,11 +249,11 @@ export function CaseEditor({
                 <Button
                   block
                   disabled={fields.length >= 100}
-                  aria-label="添加步骤"
+                  aria-label={t('添加步骤')}
                   icon={<PlusOutlined aria-hidden />}
                   onClick={() => add({ action: '', expected: '' })}
                 >
-                  添加步骤
+                  {t('添加步骤')}
                 </Button>
               </>
             )}

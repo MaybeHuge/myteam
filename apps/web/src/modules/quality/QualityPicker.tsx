@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { useInfiniteQuery, useQueries } from '@tanstack/react-query';
 import { Button, Select, Spin } from 'antd';
@@ -26,6 +27,7 @@ export function QualityPicker({
   onOptions,
   multiple = false,
   disabled = false,
+  validateBuildScope = false,
   ...props
 }: {
   projectId: string;
@@ -43,8 +45,10 @@ export function QualityPicker({
   onOptions?: (options: Option[]) => void;
   multiple?: boolean;
   disabled?: boolean;
+  validateBuildScope?: boolean;
   'aria-label'?: string;
 }) {
+  const locale = useLocale();
   const [search, setSearch] = useState('');
   const [cache, setCache] = useState<Option[]>([]);
   const query = (page: number, q = search, id?: string) =>
@@ -65,6 +69,7 @@ export function QualityPicker({
   const key = [
     ...projectKey(session.user.id, projectId),
     'quality-options',
+    locale,
     kind,
     purpose,
     releaseId,
@@ -119,9 +124,17 @@ export function QualityPicker({
       allowClear
       disabled={disabled}
       loading={results.isFetching}
-      placeholder="请选择，可搜索并继续加载"
+      placeholder={t('请选择，可搜索并继续加载')}
       value={value ?? undefined}
-      options={options.map((o) => ({ value: o.id, label: o.label }))}
+      options={options.map((o) => {
+        const invalidScope = validateBuildScope && o.scopeCurrent === false;
+        const invalidRequirement = validateBuildScope && o.matchesRequirement === false;
+        return {
+          value: o.id,
+          label: `${o.label}${invalidScope ? t('（范围已失效）') : invalidRequirement ? t('（不含当前需求）') : ''}`,
+          disabled: invalidScope || invalidRequirement,
+        };
+      })}
       onChange={(next) => {
         const ids = Array.isArray(next) ? next : next ? [next] : [];
         const chosen = ids
@@ -144,9 +157,9 @@ export function QualityPicker({
         results.isFetching ? (
           <Spin size="small" />
         ) : results.isError ? (
-          '暂时无法加载，请重试'
+          t('暂时无法加载，请重试')
         ) : (
-          '没有可选记录'
+          t('没有可选记录')
         )
       }
       popupRender={(menu) => (
@@ -154,7 +167,7 @@ export function QualityPicker({
           {menu}
           {results.isError ? (
             <Button type="link" onClick={() => void results.refetch()}>
-              重新加载选项
+              {t('重新加载选项')}
             </Button>
           ) : results.hasNextPage ? (
             <Button
@@ -162,7 +175,7 @@ export function QualityPicker({
               loading={results.isFetchingNextPage}
               onClick={() => void results.fetchNextPage()}
             >
-              加载更多
+              {t('加载更多')}
             </Button>
           ) : null}
         </>

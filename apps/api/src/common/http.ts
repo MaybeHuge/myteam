@@ -4,6 +4,7 @@ import { randomUUID, timingSafeEqual, createHash } from 'node:crypto';
 import { ZodError } from 'zod';
 import { Prisma } from '../generated/prisma/client.js';
 import type { ApiErrorResponse } from '@myteam/contracts';
+import { resolveLocale, translateMessage } from '@myteam/contracts';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -78,6 +79,25 @@ export class ErrorFilter implements ExceptionFilter {
         `${JSON.stringify({ level: 'error', requestId: request.requestId, error: error instanceof Error ? error.name : 'UnknownError' })}\n`,
       );
     }
-    response.status(status).json({ ...body, requestId: request.requestId });
+    const locale = resolveLocale(request.get('Accept-Language'));
+    response.vary('Accept-Language');
+    response.setHeader('Content-Language', locale);
+    response.status(status).json({
+      ...body,
+      message: translateMessage(body.message, locale),
+      ...(Array.isArray(body.details)
+        ? {
+            details: body.details.map((detail: unknown) =>
+              detail &&
+              typeof detail === 'object' &&
+              'message' in detail &&
+              typeof detail.message === 'string'
+                ? { ...detail, message: translateMessage(detail.message, locale) }
+                : detail,
+            ),
+          }
+        : {}),
+      requestId: request.requestId,
+    });
   }
 }

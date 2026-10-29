@@ -1,0 +1,13 @@
+import * as source from '@myteam/contracts';
+import { localizeLabels } from './runtime';
+export const qualityLabels = localizeLabels(source.qualityLabels);
+export const testCaseStatusLabels = localizeLabels(source.testCaseStatusLabels);
+export const taskStatusLabels = localizeLabels(source.taskStatusLabels);
+export const requirementStatusLabels = localizeLabels(source.requirementStatusLabels);
+export const requirementPriorityLabels = localizeLabels(source.requirementPriorityLabels);
+export const requirementTypeLabels = localizeLabels(source.requirementTypeLabels);
+export const iterationStatusLabels = localizeLabels(source.iterationStatusLabels);
+export const projectRoleLabels = localizeLabels(source.projectRoleLabels);
+export const projectStatusLabels = localizeLabels(source.projectStatusLabels);
+export const testRecordLabels = localizeLabels(source.testRecordLabels);
+export const taskPriorityLabels = localizeLabels(source.taskPriorityLabels);

@@ -1,3 +1,5 @@
+import { projectStatusLabels } from '../../i18n/labels';
+import { t, useLocale } from '../../i18n';
 import { readPage } from '../../shared/list-state';
 import { EmptyPage } from '../../shared/EmptyPage';
 import { useState } from 'react';
@@ -28,7 +30,7 @@ import {
   SearchOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { projectStatusLabels, type Project, type SessionResponse } from '@myteam/contracts';
+import { type Project, type SessionResponse } from '@myteam/contracts';
 import { errorMessage } from '../../api/client';
 import { projectHref } from './navigation';
 import { loadProjects } from './api';
@@ -43,6 +45,7 @@ export function ProjectCard({
   project: Project;
   onEdit?: (project: Project) => void;
 }) {
+  useLocale();
   const navigate = useNavigate();
   const location = useLocation();
   return (
@@ -57,11 +60,11 @@ export function ProjectCard({
               items: [
                 {
                   key: 'view',
-                  label: '查看项目',
+                  label: t('查看项目'),
                   onClick: () => navigate(projectHref(project.id, location)),
                 },
                 ...(onEdit && project.allowedActions.includes('edit')
-                  ? [{ key: 'edit', label: '编辑项目', onClick: () => onEdit(project) }]
+                  ? [{ key: 'edit', label: t('编辑项目'), onClick: () => onEdit(project) }]
                   : []),
               ],
             }}
@@ -69,7 +72,7 @@ export function ProjectCard({
             <Button
               type="text"
               size="small"
-              aria-label={`${project.name}更多操作`}
+              aria-label={t('{{0}}更多操作', { '0': project.name })}
               icon={<MoreOutlined />}
             />
           </Dropdown>
@@ -80,13 +83,15 @@ export function ProjectCard({
         <ArrowRightOutlined />
       </Link>
       <p className={styles.cardDescription}>
-        {project.description || '还没有项目简介，清晰的目标是高效协作的开始。'}
+        {project.description || t('还没有项目简介，清晰的目标是高效协作的开始。')}
       </p>
       <div className={styles.cardMetadata}>
         <span className={styles.projectCode}>{project.key}</span>
         <span>
           <CalendarOutlined />
-          {project.endDate ? `${formatDate(project.endDate)} 计划结束` : '未设结束日期'}
+          {project.endDate
+            ? t('{{0}} 计划结束', { '0': formatDate(project.endDate) })
+            : t('未设结束日期')}
         </span>
       </div>
       <div className={styles.cardFooter}>
@@ -94,9 +99,14 @@ export function ProjectCard({
           {project.memberPreview.map((person, index) => (
             <PersonAvatar key={person.id} name={person.name} index={index} />
           ))}
-          <span className={styles.memberCount}>{project.memberCount} 位成员</span>
+          <span className={styles.memberCount}>
+            {project.memberCount} {t(' 位成员')}
+          </span>
         </div>
-        <span className={styles.updatedAt}>{relativeDate(project.updatedAt)}更新</span>
+        <span className={styles.updatedAt}>
+          {relativeDate(project.updatedAt)}
+          {t('更新')}
+        </span>
       </div>
     </article>
   );
@@ -107,34 +117,35 @@ export function ProjectStats({
 }: {
   stats?: { total: number; active: number; pending: number; paused: number };
 }) {
+  useLocale();
   const items = [
     {
-      label: '全部项目',
+      label: t('全部项目'),
       value: stats?.total,
       icon: <FolderOpenOutlined />,
       tone: 'teal',
-      caption: '你可访问的项目空间',
+      caption: t('你可访问的项目空间'),
     },
     {
-      label: '进行中',
+      label: t('进行中'),
       value: stats?.active,
       icon: <CheckCircleOutlined />,
       tone: 'blue',
-      caption: '向着共同目标推进',
+      caption: t('向着共同目标推进'),
     },
     {
-      label: '待启动',
+      label: t('待启动'),
       value: stats?.pending,
       icon: <ClockCircleOutlined />,
       tone: 'violet',
-      caption: '准备开启新的协作',
+      caption: t('准备开启新的协作'),
     },
     {
-      label: '已暂停',
+      label: t('已暂停'),
       value: stats?.paused,
       icon: <PauseCircleOutlined />,
       tone: 'amber',
-      caption: '等待合适时机继续',
+      caption: t('等待合适时机继续'),
     },
   ];
   return (
@@ -154,6 +165,7 @@ export function ProjectStats({
 }
 
 export function ProjectsPage({ session }: { session: SessionResponse }) {
+  useLocale();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -186,25 +198,25 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
     <>
       <div className={styles.pageIntro}>
         <div>
-          <span className={styles.eyebrow}>PROJECTS / 项目协作</span>
+          <span className={styles.eyebrow}>{t('PROJECTS / 项目协作')}</span>
           <h1>
-            项目空间
+            {t('项目空间')}
             <span aria-hidden="true" className={styles.headingDot}>
               .
             </span>
           </h1>
-          <p>把目标变成有序的行动，让每一次协作更进一步。</p>
+          <p>{t('把目标变成有序的行动，让每一次协作更进一步。')}</p>
         </div>
         {session.user.isSystemAdmin && (
           <Button
             className={styles.primaryAction}
-            aria-label="新建项目"
+            aria-label={t('新建项目')}
             type="primary"
             size="large"
             icon={<PlusOutlined aria-hidden />}
             onClick={() => setEditor({ open: true })}
           >
-            新建项目
+            {t('新建项目')}
           </Button>
         )}
       </div>
@@ -212,20 +224,20 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
       <div className={styles.projectSection}>
         <div className={styles.toolbar}>
           <Segmented
-            aria-label="项目范围"
+            aria-label={t('项目范围')}
             value={scope}
             onChange={(value) => update('scope', value)}
             options={[
-              { label: '全部项目', value: 'all' },
-              { label: '我负责的', value: 'owned' },
-              { label: '我参与的', value: 'joined' },
+              { label: t('全部项目'), value: 'all' },
+              { label: t('我负责的'), value: 'owned' },
+              { label: t('我参与的'), value: 'joined' },
             ]}
           />
           <div className={styles.toolbarFilters}>
             <Input
               maxLength={100}
-              aria-label="搜索项目"
-              placeholder="搜索项目名称或标识"
+              aria-label={t('搜索项目')}
+              placeholder={t('搜索项目名称或标识')}
               value={search}
               onChange={(event) => update('q', event.target.value)}
               allowClear
@@ -233,20 +245,20 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
               className={styles.searchInput}
             />
             <Select
-              aria-label="项目状态筛选"
+              aria-label={t('项目状态筛选')}
               value={status}
               onChange={(value) => update('status', value)}
               className={styles.statusFilter}
               options={[
-                { value: '', label: '全部状态' },
+                { value: '', label: t('全部状态') },
                 ...Object.entries(projectStatusLabels).map(([value, label]) => ({ value, label })),
               ]}
             />
-            <div className={styles.viewSwitcher} role="group" aria-label="显示方式">
+            <div className={styles.viewSwitcher} role="group" aria-label={t('显示方式')}>
               <Button
                 type="text"
                 className={view === 'grid' ? styles.viewActive : ''}
-                aria-label="卡片视图"
+                aria-label={t('卡片视图')}
                 aria-pressed={view === 'grid'}
                 icon={<AppstoreOutlined />}
                 onClick={() => update('view', 'grid')}
@@ -254,7 +266,7 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
               <Button
                 type="text"
                 className={view === 'list' ? styles.viewActive : ''}
-                aria-label="列表视图"
+                aria-label={t('列表视图')}
                 aria-pressed={view === 'list'}
                 icon={<UnorderedListOutlined />}
                 onClick={() => update('view', 'list')}
@@ -264,18 +276,20 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
         </div>
         <div className={styles.resultsCaption}>
           <span>
-            {data ? `共 ${data.total} 个项目` : '正在加载项目…'}
-            {session.user.isSystemAdmin && <span className={styles.adminNote}>管理员视图</span>}
+            {data ? t('共 {{0}} 个项目', { '0': data.total }) : t('正在加载项目…')}
+            {session.user.isSystemAdmin && (
+              <span className={styles.adminNote}>{t('管理员视图')}</span>
+            )}
           </span>
-          <span>按最近更新排序</span>
+          <span>{t('按最近更新排序')}</span>
         </div>
         {projects.isError ? (
           <Alert
             type="error"
             showIcon
-            title="暂时无法加载项目"
+            title={t('暂时无法加载项目')}
             description={errorMessage(projects.error)}
-            action={<Button onClick={() => void projects.refetch()}>重试</Button>}
+            action={<Button onClick={() => void projects.refetch()}>{t('重试')}</Button>}
           />
         ) : projects.isPending ? (
           <div className={styles.projectGrid}>
@@ -301,20 +315,22 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
               description={
                 <>
                   <h3>
-                    {search || status ? '没有找到符合条件的项目' : '每一个好项目，都从这里开始'}
+                    {search || status
+                      ? t('没有找到符合条件的项目')
+                      : t('每一个好项目，都从这里开始')}
                   </h3>
                   <p>
                     {search || status
-                      ? '试试其他关键词，或调整筛选条件。'
+                      ? t('试试其他关键词，或调整筛选条件。')
                       : session.user.isSystemAdmin
-                        ? '创建一个项目，邀请伙伴，把下一次交付变成现实。'
-                        : '加入项目后，就能在这里与团队一起协作。请联系项目负责人添加你。'}
+                        ? t('创建一个项目，邀请伙伴，把下一次交付变成现实。')
+                        : t('加入项目后，就能在这里与团队一起协作。请联系项目负责人添加你。')}
                   </p>
                 </>
               }
             />
             {search || status ? (
-              <Button onClick={() => setParams({})}>清除筛选</Button>
+              <Button onClick={() => setParams({})}>{t('清除筛选')}</Button>
             ) : (
               session.user.isSystemAdmin && (
                 <Button
@@ -322,7 +338,7 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
                   icon={<PlusOutlined />}
                   onClick={() => setEditor({ open: true })}
                 >
-                  创建第一个项目
+                  {t('创建第一个项目')}
                 </Button>
               )
             )}
@@ -346,7 +362,7 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
             scroll={{ x: 760 }}
             columns={[
               {
-                title: '项目',
+                title: t('项目'),
                 render: (_, project) => (
                   <Link className={styles.projectTableName} to={projectHref(project.id, location)}>
                     <ProjectIcon project={project} />
@@ -357,9 +373,12 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
                   </Link>
                 ),
               },
-              { title: '状态', render: (_, project) => <ProjectStatus status={project.status} /> },
               {
-                title: '负责人',
+                title: t('状态'),
+                render: (_, project) => <ProjectStatus status={project.status} />,
+              },
+              {
+                title: t('负责人'),
                 render: (_, project) => (
                   <span className={styles.ownerInline}>
                     <PersonAvatar name={project.owner.name} />
@@ -367,14 +386,18 @@ export function ProjectsPage({ session }: { session: SessionResponse }) {
                   </span>
                 ),
               },
-              { title: '成员', dataIndex: 'memberCount', render: (count: number) => `${count} 人` },
               {
-                title: '计划结束',
+                title: t('成员'),
+                dataIndex: 'memberCount',
+                render: (count: number) => t('{{0}} 人', { '0': count }),
+              },
+              {
+                title: t('计划结束'),
                 dataIndex: 'endDate',
                 render: (value: string | null) => formatDate(value),
               },
               {
-                title: '最近更新',
+                title: t('最近更新'),
                 dataIndex: 'updatedAt',
                 render: (value: string) => relativeDate(value),
               },

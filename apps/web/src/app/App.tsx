@@ -1,3 +1,4 @@
+import { t, useLocale } from '../i18n';
 import {
   App as AntApp,
   Alert,
@@ -10,6 +11,8 @@ import {
   Tooltip,
 } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
+import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import {
   ArrowRightOutlined,
   FolderOpenOutlined,
@@ -63,11 +66,13 @@ const ProjectDetailPage = lazy(() =>
 );
 
 function ProjectRoute({ session }: { session: SessionResponse }) {
+  useLocale();
   const { projectId } = useParams();
   return <ProjectDetailPage key={projectId} session={session} />;
 }
 
 function Workspace({ session }: { session: SessionResponse }) {
+  useLocale();
   const location = useLocation();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -100,10 +105,10 @@ function Workspace({ session }: { session: SessionResponse }) {
   });
   const inProjects = location.pathname.startsWith('/projects');
   const navigation = [
-    { path: '/', label: '工作台', icon: <HomeOutlined /> },
-    { path: '/projects', label: '项目空间', icon: <FolderOpenOutlined /> },
+    { path: '/', label: t('工作台'), icon: <HomeOutlined /> },
+    { path: '/projects', label: t('项目空间'), icon: <FolderOpenOutlined /> },
     ...(session.user.isSystemAdmin
-      ? [{ path: '/settings/users', label: '账号管理', icon: <TeamOutlined /> }]
+      ? [{ path: '/settings/users', label: t('账号管理'), icon: <TeamOutlined /> }]
       : []),
   ];
   return (
@@ -117,13 +122,13 @@ function Workspace({ session }: { session: SessionResponse }) {
             <TeamOutlined />
           </span>
           <div>
-            <strong>团队工作空间</strong>
-            <span>让每一步，都走向交付</span>
+            <strong>{t('团队工作空间')}</strong>
+            <span>{t('让每一步，都走向交付')}</span>
           </div>
           <span className="workspace-identity-dot" />
         </div>
-        <span className="sidebar-label">工作空间</span>
-        <nav className="workspace-nav" aria-label="主导航">
+        <span className="sidebar-label">{t('工作空间')}</span>
+        <nav className="workspace-nav" aria-label={t('主导航')}>
           {navigation.map((item) => (
             <span key={item.path}>
               <Link
@@ -149,7 +154,7 @@ function Workspace({ session }: { session: SessionResponse }) {
         </nav>
         {!!recentData?.items.length && (
           <div className="sidebar-recents">
-            <span className="sidebar-label">最近更新</span>
+            <span className="sidebar-label">{t('最近更新')}</span>
             {recentData.items.map((project) => (
               <Link to={`/projects/${project.id}`} className="recent-project-link" key={project.id}>
                 <ProjectIcon project={project} size="small" />
@@ -162,7 +167,7 @@ function Workspace({ session }: { session: SessionResponse }) {
           <div className="sidebar-avatar">{session.user.name.slice(0, 1)}</div>
           <div>
             <strong>{session.user.name}</strong>
-            <span>{session.user.isSystemAdmin ? '系统管理员' : '团队成员'}</span>
+            <span>{session.user.isSystemAdmin ? t('系统管理员') : t('团队成员')}</span>
           </div>
         </div>
       </aside>
@@ -170,23 +175,24 @@ function Workspace({ session }: { session: SessionResponse }) {
         <header className="topbar">
           <div className="topbar-context">
             <div className="breadcrumb">
-              <span>工作空间</span>
+              <span>{t('工作空间')}</span>
               <span className="breadcrumb-divider">/</span>
               <strong>
                 {inProjects
-                  ? '项目空间'
+                  ? t('项目空间')
                   : location.pathname === '/settings/users'
-                    ? '账号管理'
-                    : '工作台'}
+                    ? t('账号管理')
+                    : t('工作台')}
               </strong>
             </div>
             <ProjectSwitcher session={session} />
           </div>
           <div className="topbar-actions">
+            <LanguageSwitcher />
             <Input
               ref={searchRef}
-              aria-label="快速搜索项目"
-              placeholder="搜索项目…"
+              aria-label={t('快速搜索项目')}
+              placeholder={t('搜索项目…')}
               prefix={<SearchOutlined />}
               suffix={<kbd>Ctrl K</kbd>}
               onPressEnter={(event) => {
@@ -203,19 +209,19 @@ function Workspace({ session }: { session: SessionResponse }) {
                 {session.user.name.slice(0, 1)}
               </Avatar>
             </Tooltip>
-            <Tooltip title="修改密码">
+            <Tooltip title={t('修改密码')}>
               <Button
                 type="text"
                 icon={<KeyOutlined />}
-                aria-label="修改密码"
+                aria-label={t('修改密码')}
                 onClick={() => setChangingPassword(true)}
               />
             </Tooltip>
-            <Tooltip title="退出登录">
+            <Tooltip title={t('退出登录')}>
               <Button
                 type="text"
                 icon={<LogoutOutlined />}
-                aria-label="退出登录"
+                aria-label={t('退出登录')}
                 loading={logout.isPending}
                 onClick={() => logout.mutate()}
               />
@@ -230,7 +236,7 @@ function Workspace({ session }: { session: SessionResponse }) {
             fallback={
               <div className="route-loading">
                 <Spin />
-                <p>正在整理工作空间…</p>
+                <p>{t('正在整理工作空间…')}</p>
               </div>
             }
           >
@@ -247,8 +253,8 @@ function Workspace({ session }: { session: SessionResponse }) {
                     <Alert
                       type="warning"
                       showIcon
-                      title="没有访问权限"
-                      description="此页面仅向系统管理员开放。"
+                      title={t('没有访问权限')}
+                      description={t('此页面仅向系统管理员开放。')}
                     />
                   )
                 }
@@ -258,11 +264,11 @@ function Workspace({ session }: { session: SessionResponse }) {
                 element={
                   <Result
                     status="404"
-                    title="页面不存在"
-                    subTitle="这个地址暂时没有对应页面。"
+                    title={t('页面不存在')}
+                    subTitle={t('这个地址暂时没有对应页面。')}
                     extra={
                       <Link to="/">
-                        <Button type="primary">返回工作台</Button>
+                        <Button type="primary">{t('返回工作台')}</Button>
                       </Link>
                     }
                   />
@@ -272,9 +278,10 @@ function Workspace({ session }: { session: SessionResponse }) {
           </Suspense>
         </main>
         <footer className="workspace-footer">
-          <span>MyTeam · 把协作连接成一次次交付</span>
+          <span>{t('MyTeam · 把协作连接成一次次交付')}</span>
           <Link to="/projects">
-            前往项目空间 <ArrowRightOutlined />
+            {t('前往项目空间 ')}
+            <ArrowRightOutlined />
           </Link>
         </footer>
       </div>
@@ -282,6 +289,7 @@ function Workspace({ session }: { session: SessionResponse }) {
   );
 }
 function SessionGate() {
+  useLocale();
   const client = useQueryClient();
   const session = useQuery({
     queryKey: sessionKey,
@@ -296,7 +304,7 @@ function SessionGate() {
     return (
       <main className="full-page-state">
         <Spin size="large" />
-        <p>正在进入工作空间…</p>
+        <p>{t('正在进入工作空间…')}</p>
       </main>
     );
   if (session.isError)
@@ -305,9 +313,9 @@ function SessionGate() {
         <Alert
           type="error"
           showIcon
-          title="暂时无法进入工作空间"
+          title={t('暂时无法进入工作空间')}
           description={errorMessage(session.error)}
-          action={<Button onClick={() => void session.refetch()}>重新连接</Button>}
+          action={<Button onClick={() => void session.refetch()}>{t('重新连接')}</Button>}
         />
       </main>
     );
@@ -318,9 +326,17 @@ function SessionGate() {
   );
 }
 export function App() {
+  const locale = useLocale();
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = t('MyTeam · 团队协作');
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute('content', t('MyTeam 研发团队协作工作空间'));
+  }, [locale]);
   return (
     <ConfigProvider
-      locale={zhCN}
+      locale={locale === 'en-US' ? enUS : zhCN}
       theme={{
         token: {
           colorPrimary: '#26785e',

@@ -1,9 +1,10 @@
+import { qualityLabels } from '../../i18n/labels';
+import { t, localizeLabels, useLocale } from '../../i18n';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router';
 import { Alert, Button, Empty, Input, Pagination, Select, Skeleton, Tag } from 'antd';
 import { ArrowRightOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import {
-  qualityLabels,
   workbenchListSchema,
   workbenchKindSchema,
   workbenchQuerySchema,
@@ -16,7 +17,7 @@ import { readPage } from '../../shared/list-state';
 import { EmptyPage } from '../../shared/EmptyPage';
 import { ProjectIcon } from '../projects/presentation';
 import styles from './workbench.module.css';
-const kindLabels = {
+const kindLabels = localizeLabels({
   ITERATION_FOLLOW_UP: '迭代跟进',
   TASK: '我的任务',
   REQUIREMENT_REVIEW: '待评审需求',
@@ -28,8 +29,8 @@ const kindLabels = {
   DEFECT_FIX: '缺陷修复',
   DEFECT_RETEST: '缺陷复测',
   DEFECT_FOLLOW_UP: '延期跟进',
-} as const;
-const statusLabels: Record<string, string> = {
+} as const);
+const statusLabels: Record<string, string> = localizeLabels({
   ...qualityLabels,
   PLANNING: '规划中',
   ACTIVE: '进行中',
@@ -38,7 +39,7 @@ const statusLabels: Record<string, string> = {
   IN_REVIEW: '待评审',
   NEEDS_REVIEW: '待复查',
   NOT_RUN: '待测试',
-} as const;
+} as const);
 type Item = z.infer<typeof workbenchItemSchema>;
 const href = (item: Item) => {
   const tab =
@@ -69,19 +70,20 @@ const href = (item: Item) => {
 };
 const action = (item: Item) =>
   item.kind === 'ITERATION_FOLLOW_UP'
-    ? '跟进迭代'
+    ? t('跟进迭代')
     : item.kind === 'REQUIREMENT_REVIEW'
-      ? '评审需求'
+      ? t('评审需求')
       : item.kind === 'TEST_CASE_REVIEW'
-        ? '评审用例'
+        ? t('评审用例')
         : item.kind === 'TEST_CASE_RECHECK'
-          ? '复查用例'
+          ? t('复查用例')
           : item.kind === 'TASK_ASSIST'
-            ? '协助任务'
+            ? t('协助任务')
             : item.kind === 'TASK'
-              ? '处理任务'
+              ? t('处理任务')
               : kindLabels[item.kind];
 export function WorkbenchTodos({ session }: { session: SessionResponse }) {
+  useLocale();
   const [params, setParams] = useSearchParams(),
     q = params.get('wq') ?? '',
     page = readPage(params.get('wp'));
@@ -115,30 +117,38 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
   });
   const data = todos.isError ? undefined : todos.data;
   const cards = [
-    { label: iterationOnly ? '全部跟进' : '全部待办', value: data?.summary.total, status: 'all' },
     {
-      label: iterationOnly ? '规划中' : '待开始',
+      label: iterationOnly ? t('全部跟进') : t('全部待办'),
+      value: data?.summary.total,
+      status: 'all',
+    },
+    {
+      label: iterationOnly ? t('规划中') : t('待开始'),
       value: data?.summary.planning,
       status: iterationOnly ? 'PLANNING' : 'pending',
     },
-    { label: '进行中', value: data?.summary.active, status: iterationOnly ? 'ACTIVE' : 'active' },
-    { label: '已逾期', value: data?.summary.overdue, status: 'overdue' },
+    {
+      label: t('进行中'),
+      value: data?.summary.active,
+      status: iterationOnly ? 'ACTIVE' : 'active',
+    },
+    { label: t('已逾期'), value: data?.summary.overdue, status: 'overdue' },
   ];
   return (
-    <section className={styles.panel} aria-label="我的待办">
+    <section className={styles.panel} aria-label={t('我的待办')}>
       <header className={styles.heading}>
         <div>
           <span className={styles.eyebrow}>YOUR NEXT STEPS</span>
-          <h2>我的待办</h2>
-          <p>接续任务、需求与用例评审、需求变化复查和迭代安排。</p>
+          <h2>{t('我的待办')}</h2>
+          <p>{t('接续任务、需求与用例评审、需求变化复查和迭代安排。')}</p>
         </div>
         <Button
-          aria-label="刷新待办"
+          aria-label={t('刷新待办')}
           icon={<ReloadOutlined aria-hidden />}
           loading={todos.isFetching}
           onClick={() => void todos.refetch()}
         >
-          刷新
+          {t('刷新')}
         </Button>
       </header>
       <div className={styles.stats}>
@@ -147,7 +157,7 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
             key={card.status}
             className={state === card.status ? styles.selected : ''}
             aria-pressed={state === card.status}
-            aria-label={`${card.label} ${card.value ?? (todos.isError ? '暂不可用' : '加载中')}`}
+            aria-label={`${card.label} ${card.value ?? (todos.isError ? t('暂不可用') : t('加载中'))}`}
             onClick={() => change({ ws: card.status === 'all' ? null : card.status, wp: null })}
           >
             <span>{card.label}</span>
@@ -157,8 +167,8 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
       </div>
       <div className={styles.toolbar}>
         <Input
-          aria-label="搜索待办"
-          placeholder="搜索任务、需求、迭代或项目"
+          aria-label={t('搜索待办')}
+          placeholder={t('搜索任务、需求、迭代或项目')}
           prefix={<SearchOutlined />}
           maxLength={100}
           allowClear
@@ -166,11 +176,11 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
           onChange={(event) => change({ wq: event.target.value, wp: null }, true)}
         />
         <Select
-          aria-label="待办类型"
+          aria-label={t('待办类型')}
           style={{ minWidth: 150 }}
           value={kind.success ? kind.data : ''}
           options={[
-            { value: '', label: '全部类型' },
+            { value: '', label: t('全部类型') },
             ...Object.entries(kindLabels).map(([value, label]) => ({ value, label })),
           ]}
           onChange={(value) => change({ wk: value || null, ws: null, wp: null })}
@@ -179,7 +189,7 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
           type={state === 'blocked' ? 'primary' : 'default'}
           onClick={() => change({ ws: state === 'blocked' ? null : 'blocked', wp: null })}
         >
-          待处理阻塞
+          {t('待处理阻塞')}
         </Button>
       </div>
       {todos.isPending ? (
@@ -188,9 +198,9 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
         <Alert
           showIcon
           type="error"
-          title="暂时无法加载待办"
+          title={t('暂时无法加载待办')}
           description={errorMessage(todos.error)}
-          action={<Button onClick={() => void todos.refetch()}>重试加载待办</Button>}
+          action={<Button onClick={() => void todos.refetch()}>{t('重试加载待办')}</Button>}
         />
       ) : !todos.data.items.length ? (
         todos.data.total > 0 ? (
@@ -199,12 +209,16 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
           <div className={styles.empty}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={q || state !== 'all' ? '没有符合条件的待办' : '当前没有需要处理的待办'}
+              description={
+                q || state !== 'all' ? t('没有符合条件的待办') : t('当前没有需要处理的待办')
+              }
             />
             {q || state !== 'all' ? (
-              <Button onClick={() => change({ wq: null, ws: null, wp: null })}>清除待办筛选</Button>
+              <Button onClick={() => change({ wq: null, ws: null, wp: null })}>
+                {t('清除待办筛选')}
+              </Button>
             ) : (
-              <p>新的安排会出现在这里；完成评审、取消、恢复或改派后自动更新。</p>
+              <p>{t('新的安排会出现在这里；完成评审、取消、恢复或改派后自动更新。')}</p>
             )}
           </div>
         )
@@ -230,21 +244,25 @@ export function WorkbenchTodos({ session }: { session: SessionResponse }) {
                     >
                       {statusLabels[item.status]}
                     </Tag>
-                    {item.overdue && <Tag color="orange">已逾期</Tag>}
-                    {item.blocked && <Tag color="orange">阻塞</Tag>}
+                    {item.overdue && <Tag color="orange">{t('已逾期')}</Tag>}
+                    {item.blocked && <Tag color="orange">{t('阻塞')}</Tag>}
                   </div>
                   <span className={styles.project}>
                     {item.project.key} · {item.project.name} · {kindLabels[item.kind]}
                   </span>
                   <span className={styles.dates}>
                     {item.kind === 'ITERATION_FOLLOW_UP'
-                      ? `${item.startDate} 至 ${item.endDate}`
+                      ? t('{{0}} 至 {{1}}', { '0': item.startDate, '1': item.endDate })
                       : item.dueDate
-                        ? `截止 ${item.dueDate}`
-                        : '无截止日'}
+                        ? t('截止 {{0}}', { '0': item.dueDate })
+                        : t('无截止日')}
                   </span>
                 </div>
-                <Link className={styles.open} aria-label={`查看待办 ${item.title}`} to={href(item)}>
+                <Link
+                  className={styles.open}
+                  aria-label={t('查看待办 {{0}}', { '0': item.title })}
+                  to={href(item)}
+                >
                   <ArrowRightOutlined />
                 </Link>
               </article>

@@ -1,3 +1,4 @@
+import { t, useLocale, getLocale } from '../../i18n';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Avatar, Button, Empty, Input, Pagination, Skeleton, Tabs, Upload } from 'antd';
@@ -29,6 +30,7 @@ export function CollaborationPanel({
   session: SessionResponse;
   initialTab?: string;
 }) {
+  useLocale();
   const [tab, setTab] = useState(initialTab);
   const [commentPage, setCommentPage] = useState(1);
   const [filePage, setFilePage] = useState(1);
@@ -50,7 +52,7 @@ export function CollaborationPanel({
     setBody('');
     setCommentPage(1);
     comment.reset();
-    void message.success('评论已发布');
+    void message.success(t('评论已发布'));
   });
   const uploadKey = useRef<{ file: File; key: string } | null>(null);
   const upload = useMutation({
@@ -71,7 +73,7 @@ export function CollaborationPanel({
       uploadKey.current = null;
       setFilePage(1);
       void client.invalidateQueries({ queryKey: ['projects'] });
-      void message.success('附件已上传');
+      void message.success(t('附件已上传'));
     },
     onError: (error) => {
       if (error instanceof ApiError && error.status === 401) void replaceSession(client, null);
@@ -84,16 +86,16 @@ export function CollaborationPanel({
       showIcon
       type="error"
       title={errorMessage(error)}
-      action={<Button onClick={() => void refetch()}>重试</Button>}
+      action={<Button onClick={() => void refetch()}>{t('重试')}</Button>}
     />
   );
   return (
-    <section className={styles.panel} aria-label="协作记录">
+    <section className={styles.panel} aria-label={t('协作记录')}>
       <div className={styles.heading}>
         <div>
           <span className={styles.eyebrow}>TEAM CONVERSATIONS</span>
-          <h2>让进展与共识留在一起</h2>
-          <p>记录讨论，补充资料，为下一步留下清晰的依据。</p>
+          <h2>{t('让进展与共识留在一起')}</h2>
+          <p>{t('记录讨论，补充资料，为下一步留下清晰的依据。')}</p>
         </div>
         <CommentOutlined />
       </div>
@@ -105,7 +107,8 @@ export function CollaborationPanel({
             key: 'comments',
             label: (
               <span>
-                <CommentOutlined /> 讨论记录{comments.data ? ` · ${comments.data.total}` : ''}
+                <CommentOutlined /> {t(' 讨论记录')}
+                {comments.data ? ` · ${comments.data.total}` : ''}
               </span>
             ),
             children: (
@@ -120,8 +123,8 @@ export function CollaborationPanel({
                       <div className={styles.composer}>
                         <Input.TextArea
                           disabled={comment.isPending}
-                          aria-label="评论内容"
-                          placeholder="写下你的进展、问题或建议…"
+                          aria-label={t('评论内容')}
+                          placeholder={t('写下你的进展、问题或建议…')}
                           value={body}
                           maxLength={5000}
                           showCount
@@ -132,10 +135,10 @@ export function CollaborationPanel({
                           }}
                         />
                         <div>
-                          <span>讨论会通知当前负责人</span>
+                          <span>{t('讨论会通知当前负责人')}</span>
                           <Button
                             type="primary"
-                            aria-label="发布评论"
+                            aria-label={t('发布评论')}
                             icon={<SendOutlined aria-hidden />}
                             disabled={!body.trim()}
                             loading={comment.isPending}
@@ -143,12 +146,12 @@ export function CollaborationPanel({
                               comment.mutate({ path: `${base}/comments`, input: { body } })
                             }
                           >
-                            发布评论
+                            {t('发布评论')}
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <p className={styles.hint}>当前对象仅可查看讨论和附件。</p>
+                      <p className={styles.hint}>{t('当前对象仅可查看讨论和附件。')}</p>
                     )}
                     {comment.isError &&
                       retry(comment.error, () =>
@@ -157,7 +160,7 @@ export function CollaborationPanel({
                     {!comments.data.items.length ? (
                       <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description="还没有讨论，清晰的共识从第一条记录开始"
+                        description={t('还没有讨论，清晰的共识从第一条记录开始')}
                       />
                     ) : (
                       <div className={styles.records}>
@@ -193,7 +196,8 @@ export function CollaborationPanel({
             key: 'attachments',
             label: (
               <span>
-                <PaperClipOutlined /> 共享附件{files.data ? ` · ${files.data.total}` : ''}
+                <PaperClipOutlined /> {t(' 共享附件')}
+                {files.data ? ` · ${files.data.total}` : ''}
               </span>
             ),
             children: (
@@ -207,8 +211,8 @@ export function CollaborationPanel({
                     {files.data.canWrite && (
                       <div className={styles.upload}>
                         <div>
-                          <strong>把资料放在团队找得到的地方</strong>
-                          <p>图片、PDF、TXT 或 Markdown，单文件最多 20 MiB。</p>
+                          <strong>{t('把资料放在团队找得到的地方')}</strong>
+                          <p>{t('图片、PDF、TXT 或 Markdown，单文件最多 20 MiB。')}</p>
                         </div>
                         <Upload
                           accept=".png,.jpg,.jpeg,.webp,.pdf,.txt,.md"
@@ -216,7 +220,7 @@ export function CollaborationPanel({
                           disabled={upload.isPending}
                           beforeUpload={(file) => {
                             if (!file.size || file.size > 20 * 1024 * 1024) {
-                              void message.error('附件大小须在 1 字节至 20 MiB 之间');
+                              void message.error(t('附件大小须在 1 字节至 20 MiB 之间'));
                               return false;
                             }
                             upload.mutate(file);
@@ -224,11 +228,11 @@ export function CollaborationPanel({
                           }}
                         >
                           <Button
-                            aria-label="上传附件"
+                            aria-label={t('上传附件')}
                             icon={<UploadOutlined aria-hidden />}
                             loading={upload.isPending}
                           >
-                            上传附件
+                            {t('上传附件')}
                           </Button>
                         </Upload>
                       </div>
@@ -240,13 +244,18 @@ export function CollaborationPanel({
                         title={errorMessage(upload.error)}
                         action={
                           upload.variables && (
-                            <Button onClick={() => upload.mutate(upload.variables)}>重试</Button>
+                            <Button onClick={() => upload.mutate(upload.variables)}>
+                              {t('重试')}
+                            </Button>
                           )
                         }
                       />
                     )}
                     {!files.data.items.length ? (
-                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有共享附件" />
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={t('还没有共享附件')}
+                      />
                     ) : (
                       <div className={styles.files}>
                         {files.data.items.map((file) => (
@@ -260,11 +269,11 @@ export function CollaborationPanel({
                               </small>
                             </div>
                             <Button
-                              aria-label={`下载 ${file.filename}`}
+                              aria-label={t('下载 {{0}}', { '0': file.filename })}
                               icon={<DownloadOutlined />}
                               href={`/api/v1/projects/${projectId}/attachments/${file.id}/download`}
                             >
-                              下载
+                              {t('下载')}
                             </Button>
                           </article>
                         ))}
@@ -290,7 +299,7 @@ export function CollaborationPanel({
   );
 }
 export const formatTime = (value: string) =>
-  new Intl.DateTimeFormat('zh-CN', {
+  new Intl.DateTimeFormat(getLocale(), {
     dateStyle: 'medium',
     timeStyle: 'short',
     timeZone: 'Asia/Shanghai',

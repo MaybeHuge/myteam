@@ -227,3 +227,22 @@
   background: #f5f8f2;
   border-radius: 6px;
 }
+
+.releaseDelivery {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e7ece3;
+}
+.releaseDelivery > h3 {
+  margin: 0 0 12px;
+}
+.releaseDelivery > h4 {
+  margin: 24px 0 12px;
+}
+.releaseIssues {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.releaseAction {
+  margin-top: 16px;
+}

@@ -168,9 +168,7 @@ export class TestRecordsService {
         const [basis] = await this.support.validity.capture(c.tx, projectId, [d.requirementId]);
         const requirement = await c.tx.requirement.findUniqueOrThrow({
           where: { id: d.requirementId },
-          include: { workItem: { include: { iteration: true } } },
         });
-        rule(requirement.workItem.iteration?.status !== 'CLOSED', '已关闭迭代不能开始测试');
         rule(
           !(await c.tx.testRecord.count({
             where: {
@@ -187,7 +185,10 @@ export class TestRecordsService {
         if (d.buildId) {
           const build = await this.support.build(c.tx, projectId, d.buildId);
           const release = await this.support.release(c.tx, projectId, build.releaseId);
-          rule(release.scopeVersion === build.scopeVersion, '构建范围已经失效');
+          rule(
+            release.scopeVersion === build.scopeVersion,
+            '构建范围已经失效，请选择当前版本范围的构建；缺陷复测请联系开发更新修复构建',
+          );
           rule(
             await c.tx.releaseItem.count({
               where: {
@@ -381,7 +382,7 @@ export class TestRecordsService {
             this.support.assigned(c, defect.retesterId);
             rule(this.support.allowed(c, 'defect:retest'), '没有缺陷复测权限');
             const fix = await c.tx.defectDisposition.findFirst({
-              where: { defectId, action: 'fix' },
+              where: { defectId, action: { in: ['fix', 'updateFixBuild'] } },
               orderBy: { createdAt: 'desc' },
             });
             rule(fix && row.createdAt >= fix.createdAt, '请在提交修复后创建复测记录');

@@ -1,3 +1,5 @@
+import { iterationStatusLabels } from '../../i18n/labels';
+import { t, useLocale, getLocale } from '../../i18n';
 import { readPage } from '../../shared/list-state';
 import { EmptyPage } from '../../shared/EmptyPage';
 import { CollaborationPanel } from '../collaboration/CollaborationPanel';
@@ -31,12 +33,7 @@ import {
   PlusOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import {
-  iterationStatusLabels,
-  type Iteration,
-  type Project,
-  type SessionResponse,
-} from '@myteam/contracts';
+import { type Iteration, type Project, type SessionResponse } from '@myteam/contracts';
 import { errorMessage } from '../../api/client';
 import { projectKey, useProjectCommand } from '../projects/api';
 import { PersonAvatar } from '../projects/presentation';
@@ -45,6 +42,7 @@ import { IterationEditor } from './IterationEditor';
 import styles from './iterations.module.css';
 
 function Status({ item }: { item: Iteration }) {
+  useLocale();
   return (
     <span className={`${styles.status} ${styles[item.status]}`}>
       <i />
@@ -53,10 +51,15 @@ function Status({ item }: { item: Iteration }) {
   );
 }
 function WorkProgress({ item }: { item: Iteration }) {
+  useLocale();
   const resolved = item.work.done + item.work.canceled;
   return (
     <div className={styles.workProgress}>
-      <span>{item.work.total ? `${resolved} / ${item.work.total} 项已处理` : '尚未关联事项'}</span>
+      <span>
+        {item.work.total
+          ? t('{{0}} / {{1}} 项已处理', { '0': resolved, '1': item.work.total })
+          : t('尚未关联事项')}
+      </span>
       {item.work.total > 0 && (
         <Progress
           size="small"
@@ -77,6 +80,7 @@ export function ProjectIterations({
   project: Project;
   session: SessionResponse;
 }) {
+  useLocale();
   const [params, setParams] = useSearchParams();
   const q = params.get('iq') ?? '';
   const status = params.get('is') ?? '';
@@ -121,7 +125,7 @@ export function ProjectIterations({
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const command = useProjectCommand(session, () => {
-    void message.success(action?.type === 'close' ? '迭代已关闭' : '迭代已启动');
+    void message.success(action?.type === 'close' ? t('迭代已关闭') : t('迭代已启动'));
     setAction(null);
   });
   const openAction = (item: Iteration, type: 'start' | 'close') => {
@@ -133,30 +137,30 @@ export function ProjectIterations({
     <Space wrap>
       {item.allowedActions.includes('edit') && (
         <Button
-          aria-label="编辑迭代"
+          aria-label={t('编辑迭代')}
           icon={<EditOutlined aria-hidden />}
           onClick={() => setEditor({ item })}
         >
-          编辑计划
+          {t('编辑计划')}
         </Button>
       )}
       {item.allowedActions.includes('start') && (
         <Button
-          aria-label="启动迭代"
+          aria-label={t('启动迭代')}
           type="primary"
           icon={<PlayCircleOutlined aria-hidden />}
           onClick={() => openAction(item, 'start')}
         >
-          启动迭代
+          {t('启动迭代')}
         </Button>
       )}
       {item.allowedActions.includes('close') && (
         <Button
-          aria-label="关闭迭代"
+          aria-label={t('关闭迭代')}
           icon={<CheckCircleOutlined aria-hidden />}
           onClick={() => openAction(item, 'close')}
         >
-          关闭迭代
+          {t('关闭迭代')}
         </Button>
       )}
     </Space>
@@ -168,17 +172,17 @@ export function ProjectIterations({
           <div className={styles.eyebrow}>
             <CalendarOutlined /> ITERATION PLANNING
           </div>
-          <h2>把目标，变成一段段进展</h2>
-          <p>明确这一轮的方向、时间与责任，让团队带着共识出发。</p>
+          <h2>{t('把目标，变成一段段进展')}</h2>
+          <p>{t('明确这一轮的方向、时间与责任，让团队带着共识出发。')}</p>
         </div>
         {list.data?.canCreate && (
           <Button
-            aria-label="新建迭代"
+            aria-label={t('新建迭代')}
             type="primary"
             icon={<PlusOutlined aria-hidden />}
             onClick={() => setEditor({})}
           >
-            新建迭代
+            {t('新建迭代')}
           </Button>
         )}
       </div>
@@ -186,25 +190,25 @@ export function ProjectIterations({
         <div className={styles.stats}>
           {[
             {
-              label: '全部迭代',
+              label: t('全部迭代'),
               value: list.data.stats.total,
               icon: <CalendarOutlined />,
               status: '',
             },
             {
-              label: '规划中',
+              label: t('规划中'),
               value: list.data.stats.planning,
               icon: <FlagOutlined />,
               status: 'PLANNING',
             },
             {
-              label: '进行中',
+              label: t('进行中'),
               value: list.data.stats.active,
               icon: <ClockCircleOutlined />,
               status: 'ACTIVE',
             },
             {
-              label: '已关闭',
+              label: t('已关闭'),
               value: list.data.stats.closed,
               icon: <CheckCircleOutlined />,
               status: 'CLOSED',
@@ -228,21 +232,21 @@ export function ProjectIterations({
       )}
       <div className={styles.filters}>
         <Input
-          aria-label="搜索迭代"
+          aria-label={t('搜索迭代')}
           prefix={<SearchOutlined />}
-          placeholder="搜索迭代名称或目标"
+          placeholder={t('搜索迭代名称或目标')}
           value={q}
           maxLength={100}
           allowClear
           onChange={(event) => changeParams({ iq: event.target.value, ip: null })}
         />
         <Select
-          aria-label="迭代范围"
+          aria-label={t('迭代范围')}
           value={mine ? 'mine' : 'all'}
           onChange={(value) => changeParams({ im: value === 'mine' ? '1' : null, ip: null })}
           options={[
-            { value: 'all', label: '全部负责人' },
-            { value: 'mine', label: '我负责的' },
+            { value: 'all', label: t('全部负责人') },
+            { value: 'mine', label: t('我负责的') },
           ]}
         />
       </div>
@@ -253,7 +257,7 @@ export function ProjectIterations({
           showIcon
           type="error"
           title={errorMessage(list.error)}
-          action={<Button onClick={() => void list.refetch()}>重试</Button>}
+          action={<Button onClick={() => void list.refetch()}>{t('重试')}</Button>}
         />
       ) : list.data && list.data.total > 0 && !list.data.items.length ? (
         <EmptyPage onReset={() => changeParams({ ip: null })} />
@@ -261,17 +265,19 @@ export function ProjectIterations({
         <div className={styles.empty}>
           <Empty
             description={
-              q || status || mine ? '没有符合条件的迭代' : '还没有迭代，从一个清晰的小目标开始'
+              q || status || mine
+                ? t('没有符合条件的迭代')
+                : t('还没有迭代，从一个清晰的小目标开始')
             }
           />
           {q || status || mine ? (
             <Button onClick={() => changeParams({ iq: null, is: null, im: null, ip: null })}>
-              清除迭代筛选
+              {t('清除迭代筛选')}
             </Button>
           ) : (
             list.data.canCreate && (
               <Button type="primary" onClick={() => setEditor({})}>
-                创建第一个迭代
+                {t('创建第一个迭代')}
               </Button>
             )
           )}
@@ -292,7 +298,7 @@ export function ProjectIterations({
                     {item.name}
                   </button>
                 </h3>
-                <p className={styles.goal}>{item.goal || '目标尚未填写，启动前请补齐。'}</p>
+                <p className={styles.goal}>{item.goal || t('目标尚未填写，启动前请补齐。')}</p>
                 <div className={styles.dates}>
                   <CalendarOutlined />
                   {item.startDate}
@@ -307,11 +313,11 @@ export function ProjectIterations({
                   </span>
                   <Button
                     type="text"
-                    aria-label={`查看迭代 ${item.name}`}
+                    aria-label={t('查看迭代 {{0}}', { '0': item.name })}
                     icon={<ArrowRightOutlined aria-hidden />}
                     onClick={() => changeParams({ iteration: item.id, wp: null })}
                   >
-                    查看计划
+                    {t('查看计划')}
                   </Button>
                 </div>
               </article>
@@ -331,7 +337,7 @@ export function ProjectIterations({
         <Drawer
           open
           size={660}
-          title="迭代计划"
+          title={t('迭代计划')}
           onClose={() => changeParams({ iteration: null, wp: null })}
         >
           {detail.isPending ? (
@@ -341,13 +347,13 @@ export function ProjectIterations({
               type="error"
               showIcon
               title={errorMessage(detail.error)}
-              action={<Button onClick={() => void detail.refetch()}>重试</Button>}
+              action={<Button onClick={() => void detail.refetch()}>{t('重试')}</Button>}
             />
           ) : (
             <div className={styles.detail}>
               <Status item={detail.data} />
               <h2>{detail.data.name}</h2>
-              <p className={styles.detailGoal}>{detail.data.goal || '目标尚未填写'}</p>
+              <p className={styles.detailGoal}>{detail.data.goal || t('目标尚未填写')}</p>
               <div className={styles.detailMeta}>
                 <span className={styles.owner}>
                   <PersonAvatar name={detail.data.owner.name} />
@@ -355,13 +361,15 @@ export function ProjectIterations({
                 </span>
                 <span>
                   <CalendarOutlined />
-                  {detail.data.startDate} 至 {detail.data.endDate}
+                  {detail.data.startDate} {t(' 至 ')}
+                  {detail.data.endDate}
                 </span>
               </div>
               {actions(detail.data)}
               <section className={styles.scope}>
                 <h3>
-                  迭代范围 <span>{detail.data.work.total}</span>
+                  {t('迭代范围 ')}
+                  <span>{detail.data.work.total}</span>
                 </h3>
                 {detail.data.work.total > 0 && <WorkProgress item={detail.data} />}
                 {detail.data.work.open > 0 && (
@@ -369,14 +377,14 @@ export function ProjectIterations({
                     className={styles.alert}
                     type="warning"
                     showIcon
-                    title={`仍有 ${detail.data.work.open} 项未完成事项，暂不能关闭`}
+                    title={t('仍有 {{0}} 项未完成事项，暂不能关闭', { '0': detail.data.work.open })}
                   />
                 )}
                 {!detail.data.items.total ? (
                   <div className={styles.scopeEmpty}>
                     <FlagOutlined />
-                    <p>尚未关联事项</p>
-                    <span>本轮尚未关联事项，关闭前会检查是否仍有未完成工作。</span>
+                    <p>{t('尚未关联事项')}</p>
+                    <span>{t('本轮尚未关联事项，关闭前会检查是否仍有未完成工作。')}</span>
                   </div>
                 ) : (
                   <>
@@ -384,12 +392,12 @@ export function ProjectIterations({
                       {detail.data.items.items.map((work) => (
                         <div key={work.id}>
                           <span>
-                            <Tag>{work.kind === 'REQUIREMENT' ? '需求' : '任务'}</Tag>
+                            <Tag>{work.kind === 'REQUIREMENT' ? t('需求') : t('任务')}</Tag>
                             <strong>{work.title}</strong>
                           </span>
                           <Tag color={work.resolution === 'OPEN' ? 'gold' : 'default'}>
                             {
-                              { OPEN: '未完成', DONE: '已完成', CANCELED: '已取消' }[
+                              { OPEN: t('未完成'), DONE: t('已完成'), CANCELED: t('已取消') }[
                                 work.resolution
                               ]
                             }
@@ -418,12 +426,12 @@ export function ProjectIterations({
                 <section className={styles.summary}>
                   <h3>
                     <CheckCircleOutlined aria-hidden />
-                    迭代总结
+                    {t('迭代总结')}
                   </h3>
                   <p>{detail.data.closeSummary}</p>
                   <small>
-                    关闭时间：
-                    {new Intl.DateTimeFormat('zh-CN', {
+                    {t('关闭时间：')}
+                    {new Intl.DateTimeFormat(getLocale(), {
                       dateStyle: 'medium',
                       timeStyle: 'short',
                       timeZone: 'Asia/Shanghai',
@@ -447,9 +455,9 @@ export function ProjectIterations({
       <Modal
         zIndex={1200}
         open={!!action}
-        title={action?.type === 'close' ? '关闭本轮迭代' : '准备开始这一轮协作'}
-        okText={action?.type === 'close' ? '确认关闭迭代' : '确认启动迭代'}
-        cancelText="取消"
+        title={action?.type === 'close' ? t('关闭本轮迭代') : t('准备开始这一轮协作')}
+        okText={action?.type === 'close' ? t('确认关闭迭代') : t('确认启动迭代')}
+        cancelText={t('取消')}
         confirmLoading={command.isPending}
         forceRender
         onCancel={() => setAction(null)}
@@ -457,8 +465,10 @@ export function ProjectIterations({
       >
         <p className={styles.modalText}>
           {action?.type === 'close'
-            ? '请确认本轮范围已处理完毕，并留下总结。关闭后计划只读，服务端会再次检查未完成事项。'
-            : '启动后团队可以围绕这一轮的目标推进工作，请先确认目标、负责人和日期。'}
+            ? t(
+                '请确认本轮范围已处理完毕，并留下总结。关闭后计划只读，服务端会再次检查未完成事项。',
+              )
+            : t('启动后团队可以围绕这一轮的目标推进工作，请先确认目标、负责人和日期。')}
         </p>
         {command.isError && (
           <Alert
@@ -486,13 +496,13 @@ export function ProjectIterations({
           {action?.type === 'close' && (
             <Form.Item
               name="summary"
-              label="迭代总结"
-              rules={[{ required: true, whitespace: true, message: '请填写迭代总结' }]}
+              label={t('迭代总结')}
+              rules={[{ required: true, whitespace: true, message: t('请填写迭代总结') }]}
             >
               <Input.TextArea
                 rows={4}
                 maxLength={2000}
-                placeholder="这一轮完成了什么？有哪些经验值得带到下一轮？"
+                placeholder={t('这一轮完成了什么？有哪些经验值得带到下一轮？')}
               />
             </Form.Item>
           )}

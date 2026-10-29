@@ -1,3 +1,5 @@
+import { projectRoleLabels, projectStatusLabels } from '../../i18n/labels';
+import { t, useLocale, getLocale } from '../../i18n';
 import { ProjectTestRecords } from '../quality/ProjectTestRecords';
 import { CollaborationPanel } from '../collaboration/CollaborationPanel';
 import { useState } from 'react';
@@ -31,12 +33,7 @@ import {
   SafetyCertificateOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import {
-  projectRoleLabels,
-  projectStatusLabels,
-  type Project,
-  type SessionResponse,
-} from '@myteam/contracts';
+import { type Project, type SessionResponse } from '@myteam/contracts';
 import { ApiError, errorMessage } from '../../api/client';
 import { projectListReturn } from './navigation';
 import { loadActivity, loadProject, projectKey, useProjectCommand } from './api';
@@ -51,52 +48,55 @@ import { ProjectIterations } from '../iterations/ProjectIterations';
 import styles from './projects.module.css';
 
 function Activity({ project, session }: { project: Project; session: SessionResponse }) {
+  useLocale();
   const activity = useQuery({
     queryKey: [...projectKey(session.user.id, project.id), 'activity'],
     queryFn: ({ signal }) => loadActivity(project.id, signal),
   });
   const label = (item: NonNullable<typeof activity.data>['items'][number]) => {
-    const name = typeof item.details?.name === 'string' ? item.details.name : '成员';
+    const name = typeof item.details?.name === 'string' ? item.details.name : t('成员');
     switch (item.action) {
       case 'project.created':
-        return '创建了这个项目';
+        return t('创建了这个项目');
       case 'project.updated':
-        return '更新了项目设置';
+        return t('更新了项目设置');
       case 'project.status.changed':
-        return `将项目设为${projectStatusLabels[item.details?.to as Project['status']] ?? '新状态'}`;
+        return t('将项目设为{{0}}', {
+          '0': projectStatusLabels[item.details?.to as Project['status']] ?? t('新状态'),
+        });
       case 'project.member.added':
-        return `添加了 ${name}`;
+        return t('添加了 {{0}}', { '0': name });
       case 'project.member.removed':
-        return `移除了 ${name}`;
+        return t('移除了 {{0}}', { '0': name });
       case 'project.member.roles.changed':
-        return `调整了 ${name} 的角色`;
+        return t('调整了 {{0}} 的角色', { '0': name });
       case 'comment.created':
-        return '发布了一条评论';
+        return t('发布了一条评论');
       case 'attachment.uploaded':
-        return `上传了附件 ${String(item.details?.filename ?? '')}`;
+        return t('上传了附件 {{0}}', { '0': String(item.details?.filename ?? '') });
       case 'iteration.created':
-        return `创建了迭代「${name}」`;
+        return t('创建了迭代「{{0}}」', { '0': name });
       case 'iteration.updated':
-        return `更新了迭代「${name}」的计划`;
+        return t('更新了迭代「{{0}}」的计划', { '0': name });
       case 'iteration.started':
-        return `启动了迭代「${name}」`;
+        return t('启动了迭代「{{0}}」', { '0': name });
       case 'iteration.closed':
-        return `关闭了迭代「${name}」`;
+        return t('关闭了迭代「{{0}}」', { '0': name });
       default:
         return item.action.startsWith('testCase.')
-          ? `更新了用例「${String(item.details?.title ?? '')}」`
+          ? t('更新了用例「{{0}}」', { '0': String(item.details?.title ?? '') })
           : item.action.startsWith('task.')
-            ? `更新了任务「${String(item.details?.title ?? '')}」`
+            ? t('更新了任务「{{0}}」', { '0': String(item.details?.title ?? '') })
             : item.action.startsWith('requirement.')
-              ? `更新了需求「${String(item.details?.title ?? '')}」`
-              : '更新了项目';
+              ? t('更新了需求「{{0}}」', { '0': String(item.details?.title ?? '') })
+              : t('更新了项目');
     }
   };
   return (
     <section className={styles.activityPanel}>
       <div className={styles.sectionHeading}>
-        <h2>最近动态</h2>
-        <span>项目的每一步，都有迹可循</span>
+        <h2>{t('最近动态')}</h2>
+        <span>{t('项目的每一步，都有迹可循')}</span>
       </div>
       {activity.isPending ? (
         <Skeleton active paragraph={{ rows: 3 }} />
@@ -104,15 +104,15 @@ function Activity({ project, session }: { project: Project; session: SessionResp
         <Alert
           showIcon
           type="error"
-          title="动态暂不可用"
+          title={t('动态暂不可用')}
           action={
             <Button type="link" onClick={() => void activity.refetch()}>
-              重试
+              {t('重试')}
             </Button>
           }
         />
       ) : !activity.data?.items.length ? (
-        <p className={styles.muted}>暂无项目动态。</p>
+        <p className={styles.muted}>{t('暂无项目动态。')}</p>
       ) : (
         <div className={styles.activityList}>
           {activity.data.items.map((item, index) => (
@@ -143,6 +143,7 @@ function ProjectOverview({
   onEdit: () => void;
   onMembers: () => void;
 }) {
+  useLocale();
   return (
     <div className={styles.detailGrid}>
       <div className={styles.detailMain}>
@@ -150,17 +151,19 @@ function ProjectOverview({
           <div className={styles.sectionHeading}>
             <h2>
               <FileTextOutlined />
-              项目简介
+              {t('项目简介')}
             </h2>
             {project.allowedActions.includes('edit') && (
               <Button type="text" size="small" icon={<EditOutlined />} onClick={onEdit}>
-                编辑
+                {t('编辑')}
               </Button>
             )}
           </div>
           <p className={styles.projectLongDescription}>
             {project.description ||
-              '还没有填写项目简介。补充项目目标、交付范围与关键背景，让新加入的伙伴更快了解这次协作。'}
+              t(
+                '还没有填写项目简介。补充项目目标、交付范围与关键背景，让新加入的伙伴更快了解这次协作。',
+              )}
           </p>
           <div className={styles.planDates}>
             <div>
@@ -168,8 +171,8 @@ function ProjectOverview({
                 <CalendarOutlined />
               </span>
               <div>
-                <small>计划开始</small>
-                <strong>{project.startDate ?? '尚未设置'}</strong>
+                <small>{t('计划开始')}</small>
+                <strong>{project.startDate ?? t('尚未设置')}</strong>
               </div>
             </div>
             <span className={styles.dateConnector}>
@@ -180,8 +183,8 @@ function ProjectOverview({
                 <CheckOutlined />
               </span>
               <div>
-                <small>计划结束</small>
-                <strong>{project.endDate ?? '尚未设置'}</strong>
+                <small>{t('计划结束')}</small>
+                <strong>{project.endDate ?? t('尚未设置')}</strong>
               </div>
             </div>
           </div>
@@ -191,38 +194,38 @@ function ProjectOverview({
       <aside className={styles.detailAside}>
         <section className={styles.overviewPanel}>
           <div className={styles.sectionHeading}>
-            <h2>项目信息</h2>
+            <h2>{t('项目信息')}</h2>
           </div>
           <dl className={styles.projectFacts}>
             <div>
-              <dt>项目标识</dt>
+              <dt>{t('项目标识')}</dt>
               <dd>
                 <span className={styles.projectCode}>{project.key}</span>
               </dd>
             </div>
             <div>
-              <dt>当前状态</dt>
+              <dt>{t('当前状态')}</dt>
               <dd>
                 <ProjectStatus status={project.status} />
               </dd>
             </div>
             <div>
-              <dt>负责人</dt>
+              <dt>{t('负责人')}</dt>
               <dd className={styles.ownerInline}>
                 <PersonAvatar name={project.owner.name} />
                 {project.owner.name}
               </dd>
             </div>
             <div>
-              <dt>创建日期</dt>
+              <dt>{t('创建日期')}</dt>
               <dd>
-                {new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai' }).format(
+                {new Intl.DateTimeFormat(getLocale(), { timeZone: 'Asia/Shanghai' }).format(
                   new Date(project.createdAt),
                 )}
               </dd>
             </div>
             <div>
-              <dt>最近更新</dt>
+              <dt>{t('最近更新')}</dt>
               <dd>{relativeDate(project.updatedAt)}</dd>
             </div>
           </dl>
@@ -230,12 +233,13 @@ function ProjectOverview({
         <section className={styles.overviewPanel}>
           <div className={styles.sectionHeading}>
             <h2>
-              项目成员<span className={styles.countPill}>{project.memberCount}</span>
+              {t('项目成员')}
+              <span className={styles.countPill}>{project.memberCount}</span>
             </h2>
             <Button
               type="text"
               size="small"
-              aria-label="查看所有成员"
+              aria-label={t('查看所有成员')}
               icon={<ArrowRightOutlined />}
               onClick={onMembers}
             />
@@ -246,7 +250,7 @@ function ProjectOverview({
                 <PersonAvatar name={person.name} index={index} size={34} />
                 <div>
                   <strong>{person.name}</strong>
-                  <small>{person.id === project.owner.id ? '项目负责人' : '团队成员'}</small>
+                  <small>{person.id === project.owner.id ? t('项目负责人') : t('团队成员')}</small>
                 </div>
                 {person.id === project.owner.id && <CrownOutlined />}
               </div>
@@ -259,18 +263,18 @@ function ProjectOverview({
               block
               onClick={onMembers}
             >
-              邀请伙伴加入协作
+              {t('邀请伙伴加入协作')}
             </Button>
           )}
         </section>
         <div className={styles.accessNote}>
           <SafetyCertificateOutlined />
           <div>
-            <strong>{project.access === 'ADMIN' ? '管理员访问' : '项目权限已启用'}</strong>
+            <strong>{project.access === 'ADMIN' ? t('管理员访问') : t('项目权限已启用')}</strong>
             <p>
               {project.access === 'ADMIN'
-                ? '你正在以系统管理员身份查看此项目。'
-                : '项目信息仅向授权成员开放，角色决定可执行的操作。'}
+                ? t('你正在以系统管理员身份查看此项目。')
+                : t('项目信息仅向授权成员开放，角色决定可执行的操作。')}
             </p>
           </div>
         </div>
@@ -280,6 +284,7 @@ function ProjectOverview({
 }
 
 export function ProjectDetailPage({ session }: { session: SessionResponse }) {
+  useLocale();
   const { projectId = '' } = useParams();
   const [params, setParams] = useSearchParams();
   const { message } = App.useApp();
@@ -292,7 +297,7 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
     queryFn: ({ signal }) => loadProject(projectId, signal),
   });
   const command = useProjectCommand(session, () => {
-    void message.success('项目状态已更新');
+    void message.success(t('项目状态已更新'));
     setStateAction(null);
   });
   const project = projectQuery.data;
@@ -339,13 +344,13 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
             ? '404'
             : '500'
         }
-        title="项目暂不可访问"
+        title={t('项目暂不可访问')}
         subTitle={errorMessage(projectQuery.error)}
         extra={
           <Space>
-            <Button onClick={() => void projectQuery.refetch()}>重新加载项目</Button>
+            <Button onClick={() => void projectQuery.refetch()}>{t('重新加载项目')}</Button>
             <Link to={backTo}>
-              <Button type="primary">返回项目空间</Button>
+              <Button type="primary">{t('返回项目空间')}</Button>
             </Link>
           </Space>
         }
@@ -353,9 +358,9 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
     );
   return (
     <>
-      <Link className={styles.backLink} to={backTo} aria-label="返回项目空间">
+      <Link className={styles.backLink} to={backTo} aria-label={t('返回项目空间')}>
         <ArrowLeftOutlined aria-hidden />
-        返回项目空间
+        {t('返回项目空间')}
       </Link>
       <div className={styles.detailHeader}>
         <div className={styles.detailIdentity}>
@@ -373,11 +378,11 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
               </span>
               <span>
                 <TeamOutlined />
-                {project.memberCount} 位成员
+                {project.memberCount} {t(' 位成员')}
               </span>
               <span>
                 <ClockCircleOutlined />
-                {relativeDate(project.updatedAt)}更新
+                {t('{{0}}更新', { 0: relativeDate(project.updatedAt) })}
               </span>
             </div>
           </div>
@@ -385,31 +390,31 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
         <Space wrap>
           {project.allowedActions.includes('edit') && (
             <Button
-              aria-label="项目设置"
+              aria-label={t('项目设置')}
               icon={<EditOutlined aria-hidden />}
               onClick={() => setEditing(project)}
             >
-              项目设置
+              {t('项目设置')}
             </Button>
           )}
           {project.allowedActions.includes('pause') && (
             <Button
-              aria-label="暂停项目"
+              aria-label={t('暂停项目')}
               icon={<PauseOutlined aria-hidden />}
               onClick={() => openState('pause')}
             >
-              暂停项目
+              {t('暂停项目')}
             </Button>
           )}
           {(project.allowedActions.includes('start') ||
             project.allowedActions.includes('resume')) && (
             <Button
-              aria-label={project.status === 'PENDING' ? '启动项目' : '继续项目'}
+              aria-label={project.status === 'PENDING' ? t('启动项目') : t('继续项目')}
               type="primary"
               icon={<PlayCircleOutlined aria-hidden />}
               onClick={() => openState(project.status === 'PENDING' ? 'start' : 'resume')}
             >
-              {project.status === 'PENDING' ? '启动项目' : '继续项目'}
+              {project.status === 'PENDING' ? t('启动项目') : t('继续项目')}
             </Button>
           )}
         </Space>
@@ -421,23 +426,23 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
         tabBarExtraContent={
           <Tooltip
             title={
-              project.myRoles.map((role) => projectRoleLabels[role]).join('、') || '系统管理员'
+              project.myRoles.map((role) => projectRoleLabels[role]).join('、') || t('系统管理员')
             }
           >
             <span className={styles.accessPill}>
               <SafetyCertificateOutlined />
               {project.access === 'ADMIN'
-                ? '管理员视图'
+                ? t('管理员视图')
                 : project.myRoles.includes('VIEWER') && project.myRoles.length === 1
-                  ? '只读访问'
-                  : '项目成员'}
+                  ? t('只读访问')
+                  : t('项目成员')}
             </span>
           </Tooltip>
         }
         items={[
           {
             key: 'overview',
-            label: '项目概览',
+            label: t('项目概览'),
             children: (
               <ProjectOverview
                 project={project}
@@ -449,42 +454,42 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
           },
           {
             key: 'iterations',
-            label: '迭代计划',
+            label: t('迭代计划'),
             children: <ProjectIterations project={project} session={session} />,
           },
           {
             key: 'requirements',
-            label: '需求管理',
+            label: t('需求管理'),
             children: <ProjectRequirements project={project} session={session} />,
           },
           {
             key: 'tasks',
-            label: '任务管理',
+            label: t('任务管理'),
             children: <ProjectTasks project={project} session={session} />,
           },
           {
             key: 'test-cases',
-            label: '测试用例',
+            label: t('测试用例'),
             children: <ProjectTestCases project={project} session={session} />,
           },
           {
             key: 'releases',
-            label: '版本与构建',
+            label: t('版本与构建'),
             children: <ProjectQuality mode="releases" project={project} session={session} />,
           },
           {
             key: 'records',
-            label: '测试记录',
+            label: t('测试记录'),
             children: <ProjectTestRecords project={project} session={session} />,
           },
           {
             key: 'defects',
-            label: '缺陷管理',
+            label: t('缺陷管理'),
             children: <ProjectQuality mode="defects" project={project} session={session} />,
           },
           {
             key: 'collaboration',
-            label: '讨论与附件',
+            label: t('讨论与附件'),
             children: (
               <CollaborationPanel
                 key={project.id}
@@ -498,7 +503,8 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
             key: 'members',
             label: (
               <span>
-                成员与权限 <span className={styles.tabCount}>{project.memberCount}</span>
+                {t('成员与权限 ')}
+                <span className={styles.tabCount}>{project.memberCount}</span>
               </span>
             ),
             children: <ProjectMembers project={project} session={session} />,
@@ -512,18 +518,22 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
         open={!!stateAction}
         title={
           stateAction === 'pause'
-            ? '暂停这个项目？'
+            ? t('暂停这个项目？')
             : stateAction === 'resume'
-              ? '继续推进项目'
-              : '准备好启动了吗？'
+              ? t('继续推进项目')
+              : t('准备好启动了吗？')
         }
         onCancel={() => setStateAction(null)}
         onOk={() => stateForm.submit()}
         confirmLoading={command.isPending}
         okText={
-          stateAction === 'pause' ? '确认暂停' : stateAction === 'resume' ? '确认继续' : '确认启动'
+          stateAction === 'pause'
+            ? t('确认暂停')
+            : stateAction === 'resume'
+              ? t('确认继续')
+              : t('确认启动')
         }
-        cancelText="取消"
+        cancelText={t('取消')}
         destroyOnHidden
         afterClose={() => {
           stateForm.resetFields();
@@ -532,8 +542,8 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
       >
         <p className={styles.drawerDescription}>
           {stateAction === 'pause'
-            ? '记录暂停原因，让团队知道当前的安排。你可以在准备就绪后继续项目。'
-            : `「${project.name}」将进入进行中状态，与团队一起把目标向前推进。`}
+            ? t('记录暂停原因，让团队知道当前的安排。你可以在准备就绪后继续项目。')
+            : t('「{{0}}」将进入进行中状态，与团队一起把目标向前推进。', { '0': project.name })}
         </p>
         {command.isError && <Alert showIcon type="error" title={errorMessage(command.error)} />}
         <Form
@@ -553,13 +563,13 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
           {stateAction === 'pause' && (
             <Form.Item
               name="reason"
-              label="暂停原因"
-              rules={[{ required: true, whitespace: true, message: '请填写暂停原因' }]}
+              label={t('暂停原因')}
+              rules={[{ required: true, whitespace: true, message: t('请填写暂停原因') }]}
             >
               <Input.TextArea
                 maxLength={500}
                 rows={3}
-                placeholder="例如：等待业务方案确认后继续推进"
+                placeholder={t('例如：等待业务方案确认后继续推进')}
               />
             </Form.Item>
           )}

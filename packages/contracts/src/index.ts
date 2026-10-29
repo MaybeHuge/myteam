@@ -1,4 +1,6 @@
 import { z } from 'zod';
+export { locales, resolveLocale, translate, translateMessage } from './i18n/index.js';
+export type { Locale, TranslationValues } from './i18n/index.js';
 
 export const projectRoles = [
   'OWNER',
@@ -1223,6 +1225,7 @@ export const fixDefectSchema = qualityReasonSchema.extend({
   reason: z.string().trim().max(5000).default(''),
   evidence: z.string().trim().max(5000).default(''),
 });
+export const updateFixBuildSchema = fixDefectSchema.extend({ buildId: z.uuid() });
 export const retestDefectSchema = qualityReasonSchema.extend({
   testRecordId: z.uuid().optional(),
   passed: z.boolean(),
@@ -1288,6 +1291,8 @@ export const qualityOptionSchema = z.object({
   releaseId: z.uuid().optional(),
   requirementId: z.uuid().optional(),
   buildId: z.uuid().optional(),
+  scopeCurrent: z.boolean().optional(),
+  matchesRequirement: z.boolean().optional(),
 });
 export const qualityOptionsSchema = paged(qualityOptionSchema);
 const qualityBase = {
@@ -1326,6 +1331,7 @@ export const buildSchema = z.object({
 });
 export const buildListSchema = paged(buildSchema).extend({ canCreate: z.boolean() });
 export const releaseDetailSchema = releaseSchema.extend({
+  activePublish: z.object({ id: z.uuid(), buildIdentifier: z.string() }).nullable(),
   scope: z.array(
     z.object({
       id: z.uuid(),
@@ -1338,6 +1344,52 @@ export const releaseDetailSchema = releaseSchema.extend({
   builds: paged(buildSchema),
   history: paged(qualityActivitySchema),
 });
+export const releaseCheckIssueSchema = z.object({
+  kind: z.enum(['BUILD', 'REQUIREMENT', 'DEFECT', 'RELEASE']),
+  id: z.uuid().nullable(),
+  message: z.string(),
+});
+export const releaseCheckSchema = z.object({
+  releaseId: z.uuid(),
+  scopeVersion: z.number().int().positive(),
+  buildId: z.uuid().nullable(),
+  canPublish: z.boolean(),
+  issues: z.array(releaseCheckIssueSchema),
+  requirements: z.array(
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      status: z.string(),
+      revision: z.number().int(),
+      testCycle: z.number().int(),
+    }),
+  ),
+});
+export const publishReleaseSchema = versionSchema.extend({
+  buildId: z.uuid(),
+  outcome: z.enum(['SUCCESS', 'FAILED']),
+  occurredAt: z.iso.datetime(),
+  notes: z.string().trim().max(5000).default(''),
+});
+export const releaseFollowupSchema = versionSchema.extend({
+  publishId: z.uuid(),
+  outcome: z.enum(['PASSED', 'FAILED', 'ROLLBACK']),
+  occurredAt: z.iso.datetime(),
+  notes: z.string().trim().max(5000).default(''),
+});
+export const releaseEventSchema = z.object({
+  id: z.uuid(),
+  publishId: z.uuid().nullable(),
+  kind: z.enum(['PUBLISH_SUCCESS', 'PUBLISH_FAILED', 'VERIFY_PASSED', 'VERIFY_FAILED', 'ROLLBACK']),
+  buildId: z.uuid(),
+  buildIdentifier: z.string(),
+  actor: requirementPerson,
+  notes: z.string(),
+  occurredAt: z.iso.datetime(),
+  createdAt: z.iso.datetime(),
+  checkSnapshot: z.unknown(),
+});
+export const releaseEventListSchema = paged(releaseEventSchema);
 export const submissionSchema = z.object({
   ...qualityBase,
   number: z.number().int(),

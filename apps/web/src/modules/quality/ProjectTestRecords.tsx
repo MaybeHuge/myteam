@@ -1,3 +1,5 @@
+import { testRecordLabels, qualityLabels } from '../../i18n/labels';
+import { t, useLocale } from '../../i18n';
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -26,8 +28,6 @@ import {
   hasPermission,
   testRecordDetailSchema,
   testRecordListSchema,
-  testRecordLabels,
-  qualityLabels,
   type Project,
   type SessionResponse,
   type TestRecord,
@@ -47,12 +47,13 @@ export type RecordSeed = {
   buildId?: string | null;
 };
 export function RecordStatus({ outcome, type }: { outcome: string; type?: string }) {
+  useLocale();
   return (
     <Tag color={outcome === 'PASSED' ? 'green' : outcome === 'FAILED' ? 'red' : 'orange'}>
       {type === 'RETEST'
         ? outcome === 'NOT_RUN'
-          ? '待复测'
-          : `复测${testRecordLabels[outcome]}`
+          ? t('待复测')
+          : t('复测{{0}}', { '0': testRecordLabels[outcome] })
         : testRecordLabels[outcome]}
     </Tag>
   );
@@ -63,23 +64,24 @@ function ResultFields({
   requirementId,
   outcome,
 }: Common & { requirementId?: string; outcome?: string }) {
+  useLocale();
   return (
     <>
-      <Form.Item name="outcome" label="测试结果" rules={[{ required: true }]}>
+      <Form.Item name="outcome" label={t('测试结果')} rules={[{ required: true }]}>
         <Select
           options={[
-            { value: 'PASSED', label: '通过' },
-            { value: 'FAILED', label: '未通过' },
+            { value: 'PASSED', label: t('通过') },
+            { value: 'FAILED', label: t('未通过') },
           ]}
         />
       </Form.Item>
-      <Form.Item name="actual" label="实际表现" rules={[{ required: true, whitespace: true }]}>
+      <Form.Item name="actual" label={t('实际表现')} rules={[{ required: true, whitespace: true }]}>
         <Input.TextArea rows={3} maxLength={5000} />
       </Form.Item>
-      <Form.Item name="evidence" label="补充说明">
+      <Form.Item name="evidence" label={t('补充说明')}>
         <Input.TextArea rows={2} maxLength={5000} />
       </Form.Item>
-      <Form.Item name="defectIds" label="关联已有缺陷（可选）">
+      <Form.Item name="defectIds" label={t('关联已有缺陷（可选）')}>
         <QualityPicker
           projectId={project.id}
           session={session}
@@ -90,8 +92,12 @@ function ResultFields({
       </Form.Item>
       {outcome === 'FAILED' && (
         <>
-          <Alert type="info" showIcon title="没有可复用的缺陷时，会根据本次结果自动创建缺陷。" />
-          <Form.Item name="severity" label="新缺陷严重程度">
+          <Alert
+            type="info"
+            showIcon
+            title={t('没有可复用的缺陷时，会根据本次结果自动创建缺陷。')}
+          />
+          <Form.Item name="severity" label={t('新缺陷严重程度')}>
             <Select
               options={['CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL'].map((value) => ({
                 value,
@@ -101,12 +107,16 @@ function ResultFields({
           </Form.Item>
           <Form.Item
             name="assigneeId"
-            label="新缺陷开发负责人"
-            extra="未指定时优先使用该需求下任务的负责人。"
+            label={t('新缺陷开发负责人')}
+            extra={t('未指定时优先使用该需求下任务的负责人。')}
           >
             <QualityPicker projectId={project.id} session={session} purpose="assignee" />
           </Form.Item>
-          <Form.Item name="retesterId" label="新缺陷复测负责人" extra="默认由当前测试人员复测。">
+          <Form.Item
+            name="retesterId"
+            label={t('新缺陷复测负责人')}
+            extra={t('默认由当前测试人员复测。')}
+          >
             <QualityPicker projectId={project.id} session={session} purpose="retester" />
           </Form.Item>
         </>
@@ -121,6 +131,7 @@ export function CreateTestRecord({
   onClose,
   onCreated,
 }: Common & { seed?: RecordSeed; onClose: () => void; onCreated: (id: string) => void }) {
+  useLocale();
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const requirementId = Form.useWatch('requirementId', form) as string | undefined;
@@ -164,7 +175,7 @@ export function CreateTestRecord({
         }
         if (!entry.id) {
           const file = item.originFileObj;
-          if (!file) throw new Error('无法读取附件，请重新选择文件');
+          if (!file) throw new Error(t('无法读取附件，请重新选择文件'));
           const result = await request<{ id: string }>(
             `/projects/${project.id}/collaboration/TEST_RECORD/${record.id}/attachments?filename=${encodeURIComponent(file.name)}`,
             {
@@ -197,7 +208,7 @@ export function CreateTestRecord({
             attachmentIds,
           },
         });
-      void message.success(draft ? '待测试记录已保存' : '测试结果已保存');
+      void message.success(draft ? t('待测试记录已保存') : t('测试结果已保存'));
       onCreated(record.id);
       onClose();
     } catch (error) {
@@ -217,7 +228,7 @@ export function CreateTestRecord({
   return (
     <Modal
       open
-      title="添加测试记录"
+      title={t('添加测试记录')}
       width={700}
       zIndex={1300}
       style={{ top: 24 }}
@@ -229,13 +240,13 @@ export function CreateTestRecord({
       footer={
         <>
           <Button disabled={pending} onClick={close}>
-            取消
+            {t('取消')}
           </Button>
           <Button loading={pending} onClick={() => void saveDraft()}>
-            保存待测试
+            {t('保存待测试')}
           </Button>
           <Button type="primary" loading={pending} onClick={() => form.submit()}>
-            保存测试结果
+            {t('保存测试结果')}
           </Button>
         </>
       }
@@ -244,26 +255,28 @@ export function CreateTestRecord({
         <Alert
           type="error"
           showIcon
-          title={saveError}
+          title={t(saveError)}
           description={
-            created ? '记录已创建，请修改结果后重试，或关闭窗口前往记录详情继续填写。' : undefined
+            created
+              ? t('记录已创建，请修改结果后重试，或关闭窗口前往记录详情继续填写。')
+              : undefined
           }
         />
       )}
-      {created && <Alert type="info" showIcon title="测试记录已创建，基本信息已锁定。" />}
+      {created && <Alert type="info" showIcon title={t('测试记录已创建，基本信息已锁定。')} />}
       <Form
         form={form}
         layout="vertical"
         initialValues={{ type: 'INITIAL', severity: 'MAJOR', ...seed }}
         onValuesChange={(changed) => {
           if ('requirementId' in changed && !seed.testCaseId)
-            form.setFieldsValue({ testCaseId: undefined, defectIds: [] });
+            form.setFieldsValue({ testCaseId: undefined, defectIds: [], buildId: undefined });
         }}
         onFinish={(values) => void save(values, false)}
       >
         <div className={styles.recordFormSection}>
-          <h3>测试信息</h3>
-          <Form.Item name="requirementId" label="验证需求" rules={[{ required: true }]}>
+          <h3>{t('测试信息')}</h3>
+          <Form.Item name="requirementId" label={t('验证需求')} rules={[{ required: true }]}>
             <QualityPicker
               projectId={project.id}
               session={session}
@@ -272,7 +285,7 @@ export function CreateTestRecord({
               disabled={!!seed.requirementId || !!created}
             />
           </Form.Item>
-          <Form.Item name="testCaseId" label="测试用例" rules={[{ required: true }]}>
+          <Form.Item name="testCaseId" label={t('测试用例')} rules={[{ required: true }]}>
             <QualityPicker
               projectId={project.id}
               session={session}
@@ -282,42 +295,49 @@ export function CreateTestRecord({
             />
           </Form.Item>
           <div className={styles.formGrid}>
-            <Form.Item name="type" label="测试类型" rules={[{ required: true }]}>
+            <Form.Item name="type" label={t('测试类型')} rules={[{ required: true }]}>
               <Select
                 disabled={!!created}
                 options={[
-                  { value: 'INITIAL', label: '首次测试' },
-                  { value: 'RETEST', label: '复测' },
+                  { value: 'INITIAL', label: t('首次测试') },
+                  { value: 'RETEST', label: t('复测') },
                 ]}
               />
             </Form.Item>
-            <Form.Item name="buildId" label="测试构建（可选）">
+            <Form.Item name="buildId" label={t('测试构建（可选）')}>
               <QualityPicker
                 projectId={project.id}
                 session={session}
                 kind="builds"
+                requirementId={requirementId}
+                validateBuildScope
                 disabled={!!created}
               />
             </Form.Item>
           </div>
           <Form.Item
             name="environment"
-            label="测试环境"
+            label={t('测试环境')}
             rules={[{ required: true, whitespace: true }]}
           >
             <Input.TextArea rows={2} maxLength={2000} disabled={!!created} />
           </Form.Item>
         </div>
         <div className={styles.recordFormSection}>
-          <h3>测试结果</h3>
-          <p className={styles.formHint}>也可先保存待测试记录；测试结果需稍后在详情中填写。</p>
+          <h3>{t('测试结果')}</h3>
+          <p className={styles.formHint}>
+            {t('也可先保存待测试记录；测试结果需稍后在详情中填写。')}
+          </p>
           <ResultFields
             project={project}
             session={session}
             requirementId={requirementId}
             outcome={outcome}
           />
-          <Form.Item label="截图与附件" extra="支持图片、PDF、TXT 或 Markdown，单文件最多 20 MiB。">
+          <Form.Item
+            label={t('截图与附件')}
+            extra={t('支持图片、PDF、TXT 或 Markdown，单文件最多 20 MiB。')}
+          >
             <Upload
               className={styles.recordUploads}
               listType="picture"
@@ -327,11 +347,11 @@ export function CreateTestRecord({
               disabled={pending}
               beforeUpload={(file) => {
                 if (!file.size || file.size > 20 * 1024 * 1024) {
-                  void message.error('附件大小须在 1 字节至 20 MiB 之间');
+                  void message.error(t('附件大小须在 1 字节至 20 MiB 之间'));
                   return Upload.LIST_IGNORE;
                 }
                 if (files.length >= 100) {
-                  void message.error('最多选择 100 个附件');
+                  void message.error(t('最多选择 100 个附件'));
                   return Upload.LIST_IGNORE;
                 }
                 return false;
@@ -339,7 +359,7 @@ export function CreateTestRecord({
               onChange={({ fileList }) => setFiles(fileList.slice(0, 100))}
             >
               <Button icon={<UploadOutlined />} disabled={pending}>
-                选择附件
+                {t('选择附件')}
               </Button>
             </Upload>
           </Form.Item>
@@ -349,13 +369,14 @@ export function CreateTestRecord({
   );
 }
 function FinishRecord({ record, ...props }: Common & { record: TestRecord }) {
+  useLocale();
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const [collectError, setCollectError] = useState('');
   const [collecting, setCollecting] = useState(false);
   const outcome = Form.useWatch('outcome', form) as string | undefined;
   const command = useProjectCommand(props.session, () => {
-    void message.success('测试结果已保存');
+    void message.success(t('测试结果已保存'));
   });
   const submit = async (values: Record<string, unknown>) => {
     setCollectError('');
@@ -389,7 +410,7 @@ function FinishRecord({ record, ...props }: Common & { record: TestRecord }) {
       onFinish={(values) => void submit(values)}
     >
       {(command.isError || collectError) && (
-        <Alert type="error" showIcon title={collectError || errorMessage(command.error)} />
+        <Alert type="error" showIcon title={t(collectError) || errorMessage(command.error)} />
       )}
       <ResultFields
         project={props.project}
@@ -397,9 +418,9 @@ function FinishRecord({ record, ...props }: Common & { record: TestRecord }) {
         requirementId={record.requirementId}
         outcome={outcome}
       />
-      <p>截图可在下方“附件”中上传，保存结果时会一并引用。</p>
+      <p>{t('截图可在下方“附件”中上传，保存结果时会一并引用。')}</p>
       <Button type="primary" htmlType="submit" loading={command.isPending || collecting}>
-        保存测试结果
+        {t('保存测试结果')}
       </Button>
     </Form>
   );
@@ -409,6 +430,7 @@ export function TestRecordDetail({
   onClose,
   ...props
 }: Common & { id: string; onClose: () => void }) {
+  useLocale();
   const detail = useQuery({
     queryKey: [...projectKey(props.session.user.id, props.project.id), 'test-record', id],
     queryFn: async ({ signal }) =>
@@ -418,7 +440,7 @@ export function TestRecordDetail({
   });
   const record = detail.data;
   return (
-    <Drawer open size="min(800px, 100vw)" title="测试记录详情" onClose={onClose}>
+    <Drawer open size="min(800px, 100vw)" title={t('测试记录详情')} onClose={onClose}>
       {detail.isPending ? (
         <Skeleton active />
       ) : detail.isError || !record ? (
@@ -426,7 +448,7 @@ export function TestRecordDetail({
           type="error"
           showIcon
           title={errorMessage(detail.error)}
-          action={<Button onClick={() => void detail.refetch()}>重新加载</Button>}
+          action={<Button onClick={() => void detail.refetch()}>{t('重新加载')}</Button>}
         />
       ) : (
         <>
@@ -436,58 +458,68 @@ export function TestRecordDetail({
           <h2>{record.caseTitle}</h2>
           <Space wrap>
             <RecordStatus outcome={record.outcome} type={record.type} />
-            {!record.current && <Tag>已失效</Tag>}
-            <span>测试人：{record.executor.name}</span>
+            {!record.current && <Tag>{t('已失效')}</Tag>}
+            <span>
+              {t('测试人：')}
+              {record.executor.name}
+            </span>
           </Space>
           <p>
-            需求：
+            {t('需求：')}
             <Link
               to={`/projects/${props.project.id}?tab=requirements&requirement=${record.requirementId}`}
             >
               {record.requirementTitle}
             </Link>{' '}
-            · 需求修订 {record.requirementRevision} · 第 {record.cycle} 轮
+            {t('· 需求修订 ')}
+            {record.requirementRevision} {t(' · 第 ')}
+            {record.cycle} {t(' 轮')}
           </p>
           <p>
-            用例：
+            {t('用例：')}
             <Link to={`/projects/${props.project.id}?tab=test-cases&case=${record.testCaseId}`}>
               {record.caseCode}
             </Link>{' '}
-            · 修订 {record.caseRevision}
+            {t('· 修订 ')}
+            {record.caseRevision}
           </p>
           <p>
-            环境：{record.environment} · 构建：{record.buildIdentifier ?? '未指定'}
+            {t('环境：')}
+            {record.environment} {t(' · 构建：')}
+            {record.buildIdentifier ?? t('未指定')}
           </p>
           <Tabs
             items={[
               {
                 key: 'result',
-                label: '测试结果',
+                label: t('测试结果'),
                 children: (
                   <>
                     {!record.current && (
                       <Alert
                         type="warning"
                         showIcon
-                        title="需求、用例或开发范围已变化，本记录保留供查询，不计入当前完成条件。"
+                        title={t(
+                          '需求、用例或开发范围已变化，本记录保留供查询，不计入当前完成条件。',
+                        )}
                       />
                     )}
                     {record.allowedActions.includes('finish') ? (
                       <FinishRecord record={record} {...props} />
                     ) : (
                       <>
-                        <h3>实际表现</h3>
-                        <p style={{ whiteSpace: 'pre-wrap' }}>{record.actual || '尚未记录'}</p>
+                        <h3>{t('实际表现')}</h3>
+                        <p style={{ whiteSpace: 'pre-wrap' }}>{record.actual || t('尚未记录')}</p>
                         <p style={{ whiteSpace: 'pre-wrap' }}>{record.evidence}</p>
                       </>
                     )}
                     <AttachmentImages
                       id={record.id}
                       targetType="TEST_RECORD"
-                      title="测试截图"
+                      title={t('测试截图')}
                       {...props}
                     />
-                    <h3>关联缺陷</h3>
+                    <h3>{t('关联缺陷')}</h3>
                     {record.defects.length ? (
                       <Space wrap>
                         {record.defects.map((d) => (
@@ -500,23 +532,29 @@ export function TestRecordDetail({
                         ))}
                       </Space>
                     ) : (
-                      <p>暂无关联缺陷</p>
+                      <p>{t('暂无关联缺陷')}</p>
                     )}
                   </>
                 ),
               },
               {
                 key: 'case',
-                label: '本次测试内容',
+                label: t('本次测试内容'),
                 children: (
                   <>
-                    <h3>前置条件</h3>
-                    <p>{record.snapshot.content.preconditions || '无'}</p>
+                    <h3>{t('前置条件')}</h3>
+                    <p>{record.snapshot.content.preconditions || t('无')}</p>
                     {record.snapshot.content.steps.map((step, i) => (
                       <article key={i} className={styles.card}>
-                        <strong>步骤 {i + 1}</strong>
+                        <strong>
+                          {t('步骤 ')}
+                          {i + 1}
+                        </strong>
                         <p style={{ whiteSpace: 'pre-wrap' }}>{step.action}</p>
-                        <p style={{ whiteSpace: 'pre-wrap' }}>预期：{step.expected}</p>
+                        <p style={{ whiteSpace: 'pre-wrap' }}>
+                          {t('预期：')}
+                          {step.expected}
+                        </p>
                       </article>
                     ))}
                   </>
@@ -540,6 +578,7 @@ export function TestRecordsList({
   requirementId,
   ...props
 }: Common & { testCaseId?: string; requirementId?: string }) {
+  useLocale();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
   const query = new URLSearchParams({
@@ -562,7 +601,7 @@ export function TestRecordsList({
           type="error"
           showIcon
           title={errorMessage(list.error)}
-          action={<Button onClick={() => void list.refetch()}>重试</Button>}
+          action={<Button onClick={() => void list.refetch()}>{t('重试')}</Button>}
         />
       ) : (
         <Table<TestRecord>
@@ -572,11 +611,13 @@ export function TestRecordsList({
           pagination={false}
           scroll={{ x: 640 }}
           locale={{
-            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无测试记录" />,
+            emptyText: (
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无测试记录')} />
+            ),
           }}
           columns={[
             {
-              title: '测试记录',
+              title: t('测试记录'),
               key: 'title',
               render: (_, r) => (
                 <Button type="link" onClick={() => setSelected(r.id)}>
@@ -584,19 +625,19 @@ export function TestRecordsList({
                 </Button>
               ),
             },
-            { title: '需求', dataIndex: 'requirementTitle' },
+            { title: t('需求'), dataIndex: 'requirementTitle' },
             {
-              title: '结果',
+              title: t('结果'),
               key: 'outcome',
               render: (_, r) => (
                 <>
                   <RecordStatus outcome={r.outcome} type={r.type} />
-                  {!r.current && <Tag>已失效</Tag>}
+                  {!r.current && <Tag>{t('已失效')}</Tag>}
                 </>
               ),
             },
-            { title: '测试人', key: 'executor', render: (_, r) => r.executor.name },
-            { title: '时间', dataIndex: 'createdAt', render: formatTime },
+            { title: t('测试人'), key: 'executor', render: (_, r) => r.executor.name },
+            { title: t('时间'), dataIndex: 'createdAt', render: formatTime },
           ]}
         />
       )}
@@ -613,6 +654,7 @@ export function TestRecordsList({
   );
 }
 export function ProjectTestRecords(props: Common) {
+  useLocale();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
@@ -648,27 +690,27 @@ export function ProjectTestRecords(props: Common) {
     <section>
       <div className={styles.heading}>
         <div>
-          <h2>测试记录</h2>
-          <p>按需求验证用例，记录每次测试、复测和发现的问题。</p>
+          <h2>{t('测试记录')}</h2>
+          <p>{t('按需求验证用例，记录每次测试、复测和发现的问题。')}</p>
         </div>
         {list.data?.canCreate && (
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-            添加测试记录
+            {t('添加测试记录')}
           </Button>
         )}
       </div>
       <Space wrap style={{ marginBottom: 20 }}>
         <Input.Search
-          aria-label="搜索测试记录"
-          placeholder="搜索用例、实际表现或环境"
+          aria-label={t('搜索测试记录')}
+          placeholder={t('搜索用例、实际表现或环境')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onSearch={(v) => set('rq', v)}
           allowClear
         />
         <Select
-          aria-label="测试结果筛选"
-          placeholder="全部结果"
+          aria-label={t('测试结果筛选')}
+          placeholder={t('全部结果')}
           allowClear
           value={outcome || undefined}
           style={{ width: 140 }}
@@ -683,14 +725,14 @@ export function ProjectTestRecords(props: Common) {
             projectId={props.project.id}
             session={props.session}
             kind="requirements"
-            aria-label="测试需求筛选"
+            aria-label={t('测试需求筛选')}
             value={requirementId}
             onChange={(v) => set('rrequirement', typeof v === 'string' ? v : null)}
           />
         </div>
         {testCaseId && (
           <Tag closable onClose={() => set('rcase', null)}>
-            已筛选测试用例
+            {t('已筛选测试用例')}
           </Tag>
         )}
       </Space>
@@ -699,7 +741,7 @@ export function ProjectTestRecords(props: Common) {
           type="error"
           showIcon
           title={errorMessage(list.error)}
-          action={<Button onClick={() => void list.refetch()}>重试</Button>}
+          action={<Button onClick={() => void list.refetch()}>{t('重试')}</Button>}
         />
       ) : (
         <Table<TestRecord>
@@ -710,7 +752,7 @@ export function ProjectTestRecords(props: Common) {
           scroll={{ x: 900 }}
           columns={[
             {
-              title: '测试记录 / 用例',
+              title: t('测试记录 / 用例'),
               key: 'title',
               render: (_, r) => (
                 <>
@@ -722,34 +764,34 @@ export function ProjectTestRecords(props: Common) {
                 </>
               ),
             },
-            { title: '需求', dataIndex: 'requirementTitle' },
+            { title: t('需求'), dataIndex: 'requirementTitle' },
             {
-              title: '结果',
+              title: t('结果'),
               key: 'outcome',
               render: (_, r) => (
                 <>
                   <RecordStatus outcome={r.outcome} type={r.type} />
-                  {!r.current && <Tag>已失效</Tag>}
+                  {!r.current && <Tag>{t('已失效')}</Tag>}
                 </>
               ),
             },
             {
-              title: '环境 / 构建',
+              title: t('环境 / 构建'),
               key: 'env',
               render: (_, r) => (
                 <>
                   {r.environment}
                   <br />
-                  {r.buildIdentifier ?? '未指定构建'}
+                  {r.buildIdentifier ?? t('未指定构建')}
                 </>
               ),
             },
-            { title: '测试人', key: 'executor', render: (_, r) => r.executor.name },
-            { title: '创建时间', dataIndex: 'createdAt', render: formatTime },
+            { title: t('测试人'), key: 'executor', render: (_, r) => r.executor.name },
+            { title: t('创建时间'), dataIndex: 'createdAt', render: formatTime },
             {
-              title: '缺陷',
+              title: t('缺陷'),
               key: 'defects',
-              render: (_, r) => (r.defects.length ? `${r.defects.length} 个` : '—'),
+              render: (_, r) => (r.defects.length ? t('{{0}} 个', { '0': r.defects.length }) : '—'),
             },
           ]}
         />

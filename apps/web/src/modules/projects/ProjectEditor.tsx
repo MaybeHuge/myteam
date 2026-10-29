@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { Alert, App, Button, Drawer, Form, Input, Select, Space } from 'antd';
 import { CheckOutlined, FolderAddOutlined, SettingOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -21,13 +22,22 @@ function ColorChoices({
   value?: Project['color'];
   onChange?: (value: Project['color']) => void;
 }) {
+  useLocale();
   return (
     <div className={styles.colorChoices}>
       {projectColors.map((color) => (
         <button
           type="button"
           key={color}
-          aria-label={`选择${{ teal: '青绿', blue: '蓝色', violet: '紫色', amber: '琥珀', rose: '玫瑰' }[color]}主题`}
+          aria-label={t('选择{{0}}主题', {
+            '0': {
+              teal: t('青绿'),
+              blue: t('蓝色'),
+              violet: t('紫色'),
+              amber: t('琥珀'),
+              rose: t('玫瑰'),
+            }[color],
+          })}
           aria-pressed={value === color}
           className={`${styles.colorChoice} ${styles[color]}`}
           onClick={() => onChange?.(color)}
@@ -52,6 +62,7 @@ export function ProjectEditor({
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
+  useLocale();
   const [form] = Form.useForm();
   const [memberSearch, setMemberSearch] = useState('');
   const { message } = App.useApp();
@@ -68,7 +79,7 @@ export function ProjectEditor({
     enabled: open && !!project,
   });
   const mutation = useProjectCommand<{ id: string }>(session, (result) => {
-    void message.success(project ? '项目设置已保存' : '项目已创建');
+    void message.success(project ? t('项目设置已保存') : t('项目已创建'));
     onClose();
     if (!project) onCreated?.(result.id);
   });
@@ -89,16 +100,16 @@ export function ProjectEditor({
       title={
         <span className={styles.drawerTitle}>
           {project ? <SettingOutlined /> : <FolderAddOutlined />}
-          {project ? '项目设置' : '创建新项目'}
+          {project ? t('项目设置') : t('创建新项目')}
         </span>
       }
       footer={
         <div className={styles.drawerFooter}>
-          <span>让团队从清晰的目标开始</span>
+          <span>{t('让团队从清晰的目标开始')}</span>
           <Space>
-            <Button onClick={onClose}>取消</Button>
+            <Button onClick={onClose}>{t('取消')}</Button>
             <Button type="primary" loading={mutation.isPending} onClick={() => form.submit()}>
-              {project ? '保存修改' : '创建项目'}
+              {project ? t('保存修改') : t('创建项目')}
             </Button>
           </Space>
         </div>
@@ -107,8 +118,8 @@ export function ProjectEditor({
       <div className={styles.editorIntro}>
         <ProjectIcon project={{ color, icon }} size="large" />
         <div>
-          <strong>{project ? '把项目细节整理好' : '为新的协作留一个空间'}</strong>
-          <p>设置名称、目标和计划，开始与团队一起推进。</p>
+          <strong>{project ? t('把项目细节整理好') : t('为新的协作留一个空间')}</strong>
+          <p>{t('设置名称、目标和计划，开始与团队一起推进。')}</p>
         </div>
       </div>
       {mutation.isError && (
@@ -139,38 +150,38 @@ export function ProjectEditor({
       >
         <Form.Item
           name="name"
-          label="项目名称"
-          rules={[{ required: true, whitespace: true, message: '请输入项目名称' }, { max: 80 }]}
+          label={t('项目名称')}
+          rules={[{ required: true, whitespace: true, message: t('请输入项目名称') }, { max: 80 }]}
         >
-          <Input placeholder="例如：官网改版计划" size="large" maxLength={80} autoFocus />
+          <Input placeholder={t('例如：官网改版计划')} size="large" maxLength={80} autoFocus />
         </Form.Item>
         {!project && (
           <Form.Item
             name="key"
-            label="项目标识"
-            extra="2–12 位字母或数字，用于快速识别项目；创建后不再修改。"
+            label={t('项目标识')}
+            extra={t('2–12 位字母或数字，用于快速识别项目；创建后不再修改。')}
             normalize={(value: string) => value.toUpperCase()}
             rules={[
-              { required: true, message: '请输入项目标识' },
+              { required: true, message: t('请输入项目标识') },
               {
                 pattern: /^[A-Z][A-Z0-9]{1,11}$/,
-                message: '以字母开头，使用 2–12 位大写字母或数字',
+                message: t('以字母开头，使用 2–12 位大写字母或数字'),
               },
             ]}
           >
-            <Input placeholder="例如：WEB" maxLength={12} />
+            <Input placeholder={t('例如：WEB')} maxLength={12} />
           </Form.Item>
         )}
-        <Form.Item name="description" label="项目简介">
+        <Form.Item name="description" label={t('项目简介')}>
           <Input.TextArea
-            placeholder="这个项目要解决什么问题？希望达成什么目标？"
+            placeholder={t('这个项目要解决什么问题？希望达成什么目标？')}
             rows={4}
             maxLength={2000}
             showCount
           />
         </Form.Item>
-        <div className={styles.formSectionLabel}>个性化标识</div>
-        <Form.Item name="icon" label="项目图标">
+        <div className={styles.formSectionLabel}>{t('个性化标识')}</div>
+        <Form.Item name="icon" label={t('项目图标')}>
           <Select
             options={projectIcons.map((value) => ({
               value,
@@ -179,12 +190,12 @@ export function ProjectEditor({
                   <ProjectIcon project={{ icon: value, color }} size="small" />
                   {
                     {
-                      layers: '协作',
-                      rocket: '探索',
-                      code: '研发',
-                      compass: '规划',
-                      shield: '质量',
-                      cube: '产品',
+                      layers: t('协作'),
+                      rocket: t('探索'),
+                      code: t('研发'),
+                      compass: t('规划'),
+                      shield: t('质量'),
+                      cube: t('产品'),
                     }[value]
                   }
                 </span>
@@ -192,17 +203,17 @@ export function ProjectEditor({
             }))}
           />
         </Form.Item>
-        <Form.Item name="color" label="主题颜色">
+        <Form.Item name="color" label={t('主题颜色')}>
           <ColorChoices />
         </Form.Item>
-        <div className={styles.formSectionLabel}>计划与负责人</div>
+        <div className={styles.formSectionLabel}>{t('计划与负责人')}</div>
         <div className={styles.dateFields}>
-          <Form.Item name="startDate" label="计划开始">
+          <Form.Item name="startDate" label={t('计划开始')}>
             <Input type="date" />
           </Form.Item>
           <Form.Item
             name="endDate"
-            label="计划结束"
+            label={t('计划结束')}
             dependencies={['startDate']}
             rules={[
               ({ getFieldValue }) => ({
@@ -210,7 +221,7 @@ export function ProjectEditor({
                   const start = getFieldValue('startDate') as string;
                   return !value || !start || value >= start
                     ? Promise.resolve()
-                    : Promise.reject(new Error('结束日期不能早于开始日期'));
+                    : Promise.reject(new Error(t('结束日期不能早于开始日期')));
                 },
               }),
             ]}
@@ -221,8 +232,8 @@ export function ProjectEditor({
         {project ? (
           <Form.Item
             name="ownerId"
-            label="项目负责人"
-            extra="新负责人需已加入项目；移交后原有成员角色会保留。"
+            label={t('项目负责人')}
+            extra={t('新负责人需已加入项目；移交后原有成员角色会保留。')}
           >
             <Select
               loading={members.isPending}
@@ -251,7 +262,7 @@ export function ProjectEditor({
         ) : (
           <div className={styles.ownerHint}>
             <span className={styles.personAvatar}>{session.user.name.slice(0, 1)}</span>
-            <span>你将成为这个项目的首位负责人</span>
+            <span>{t('你将成为这个项目的首位负责人')}</span>
           </div>
         )}
       </Form>

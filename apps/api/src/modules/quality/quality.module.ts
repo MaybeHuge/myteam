@@ -6,6 +6,7 @@ import { ProjectsModule } from '../projects/projects.module.js';
 import { TestCasesModule } from '../test-cases/test-cases.module.js';
 import { QualitySupport } from './quality.support.js';
 import { TestingService } from './testing.service.js';
+import { ReleasePublicationService } from './release-publication.service.js';
 import { TestRecordsService } from './test-records.service.js';
 import { DefectsService } from './defects.service.js';
 const uuid = (s: string) => z.uuid().parse(s);
@@ -15,6 +16,7 @@ class QualityController {
     readonly testing: TestingService,
     readonly defects: DefectsService,
     readonly records: TestRecordsService,
+    readonly publication: ReleasePublicationService,
   ) {}
   @Get('people') people(@Param('projectId') p: string, @Req() r: Request) {
     return this.testing.people(uuid(p), r);
@@ -49,7 +51,19 @@ class QualityController {
     return this.defects.action(
       uuid(p),
       uuid(id),
-      z.enum(['confirm', 'assign', 'start', 'fix', 'retest', 'reopen', 'dispose', 'link']).parse(a),
+      z
+        .enum([
+          'confirm',
+          'assign',
+          'start',
+          'fix',
+          'updateFixBuild',
+          'retest',
+          'reopen',
+          'dispose',
+          'link',
+        ])
+        .parse(a),
       b,
       r,
     );
@@ -68,6 +82,36 @@ class QualityController {
     @Req() r: Request,
   ) {
     return this.testing.releaseCommand(uuid(p), uuid(id), b, r);
+  }
+  @Get('releases/:id/check') releaseCheck(
+    @Param('projectId') p: string,
+    @Param('id') id: string,
+    @Req() r: Request,
+  ) {
+    return this.publication.preview(uuid(p), uuid(id), r);
+  }
+  @Get('releases/:id/events') releaseEvents(
+    @Param('projectId') p: string,
+    @Param('id') id: string,
+    @Req() r: Request,
+  ) {
+    return this.publication.events(uuid(p), uuid(id), r);
+  }
+  @Post('releases/:id/publish') releasePublish(
+    @Param('projectId') p: string,
+    @Param('id') id: string,
+    @Body() b: unknown,
+    @Req() r: Request,
+  ) {
+    return this.publication.publish(uuid(p), uuid(id), b, r);
+  }
+  @Post('releases/:id/followup') releaseFollowup(
+    @Param('projectId') p: string,
+    @Param('id') id: string,
+    @Body() b: unknown,
+    @Req() r: Request,
+  ) {
+    return this.publication.followup(uuid(p), uuid(id), b, r);
   }
   @Post('builds') buildCreate(
     @Param('projectId') p: string,
@@ -116,6 +160,12 @@ class QualityController {
 @Module({
   imports: [IdentityModule, ProjectsModule, TestCasesModule],
   controllers: [QualityController],
-  providers: [QualitySupport, TestingService, DefectsService, TestRecordsService],
+  providers: [
+    QualitySupport,
+    TestingService,
+    DefectsService,
+    TestRecordsService,
+    ReleasePublicationService,
+  ],
 })
 export class QualityModule {}

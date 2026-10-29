@@ -140,6 +140,15 @@ input {
   padding: 65px 40px;
   position: relative;
 }
+.language-switcher {
+  min-width: 130px;
+  flex-shrink: 0;
+}
+.login-language {
+  position: absolute;
+  top: 20px;
+  right: 25px;
+}
 .login-form-wrap {
   width: 100%;
   max-width: 360px;
@@ -1103,5 +1112,23 @@ input {
   .topbar-context {
     flex: 1;
     min-width: 0;
+  }
+  .topbar {
+    flex-wrap: wrap;
+    padding-block: 10px;
+    gap: 8px;
+  }
+  .topbar-actions {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .language-switcher {
+    min-width: 120px;
+    width: 120px;
+  }
+  .login-form-panel {
+    padding-top: 65px;
   }
 }

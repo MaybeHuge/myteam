@@ -4,6 +4,7 @@ import {
   createDefectSchema,
   assignDefectSchema,
   fixDefectSchema,
+  updateFixBuildSchema,
   retestDefectSchema,
   disposeDefectSchema,
   linkDefectResultSchema,
@@ -92,6 +93,7 @@ export class DefectsService {
       ) {
         if (row.status === 'OPEN') actions.push('start');
         if (row.status === 'FIXING') actions.push('fix');
+        if (row.status === 'AWAITING_RETEST') actions.push('updateFixBuild');
       }
     }
     const found = row.foundBuildId
@@ -312,7 +314,7 @@ export class DefectsService {
         actorId: c.actor.userId,
         reason,
         evidence,
-        buildId: ['fix', 'retest'].includes(action) ? row.fixedBuildId : null,
+        buildId: ['fix', 'updateFixBuild', 'retest'].includes(action) ? row.fixedBuildId : null,
         details: recordId ? { testRecordId: recordId } : {},
       },
     });
@@ -335,7 +337,16 @@ export class DefectsService {
   async action(
     projectId: string,
     id: string,
-    action: 'confirm' | 'assign' | 'start' | 'fix' | 'retest' | 'reopen' | 'dispose' | 'link',
+    action:
+      | 'confirm'
+      | 'assign'
+      | 'start'
+      | 'fix'
+      | 'updateFixBuild'
+      | 'retest'
+      | 'reopen'
+      | 'dispose'
+      | 'link',
     input: unknown,
     req: Request,
   ) {
@@ -344,19 +355,21 @@ export class DefectsService {
         ? assignDefectSchema
         : action === 'fix'
           ? fixDefectSchema
-          : action === 'retest'
-            ? retestDefectSchema
-            : action === 'dispose'
-              ? disposeDefectSchema
-              : action === 'link'
-                ? linkDefectResultSchema
-                : qualityReasonSchema;
+          : action === 'updateFixBuild'
+            ? updateFixBuildSchema
+            : action === 'retest'
+              ? retestDefectSchema
+              : action === 'dispose'
+                ? disposeDefectSchema
+                : action === 'link'
+                  ? linkDefectResultSchema
+                  : qualityReasonSchema;
     const data = schema.parse(input);
     return this.support.write(
       projectId,
       req,
       { action: `defect.${action}`, id, ...data },
-      ['start', 'fix'].includes(action) ? 'defect:fix' : 'defect:retest',
+      ['start', 'fix', 'updateFixBuild'].includes(action) ? 'defect:fix' : 'defect:retest',
       async (c) => {
         let row = await this.find(c.tx, projectId, id);
         checkVersion(row, data.version);
@@ -428,6 +441,60 @@ export class DefectsService {
             data: { fixedBuildId: d.buildId ?? null },
           });
           row = await this.disposition(c, row, 'AWAITING_RETEST', action, reason, d.evidence);
+        } else if (action === 'updateFixBuild') {
+          this.support.assigned(c, row.assigneeId);
+          rule(row.status === 'AWAITING_RETEST', '仅待复测缺陷可以更新修复构建');
+          const d = updateFixBuildSchema.parse(input);
+          const build = await this.support.build(c.tx, projectId, d.buildId);
+          const release = await this.support.release(c.tx, projectId, build.releaseId);
+          rule(
+            !row.targetReleaseId || build.releaseId === row.targetReleaseId,
+            '修复构建不属于目标版本',
+          );
+          rule(
+            build.scopeVersion === release.scopeVersion,
+            '构建范围已经失效，请选择当前版本范围的构建',
+          );
+          rule(
+            await c.tx.releaseItem.count({
+              where: {
+                projectId,
+                releaseId: release.id,
+                scopeVersion: release.scopeVersion,
+                workItemId: row.requirementId,
+              },
+            }),
+            '构建范围不包含该需求',
+          );
+          rule(
+            build.id !== row.foundBuildId && build.id !== row.fixedBuildId,
+            '请选择其他实际修复构建',
+          );
+          const links = await c.tx.defectRecordLink.findMany({
+            where: { projectId, defectId: id },
+          });
+          const requirement = await c.tx.requirement.findUniqueOrThrow({
+            where: { id: row.requirementId },
+          });
+          const pending = await c.tx.testRecord.findMany({
+            where: {
+              projectId,
+              id: { in: links.map((link) => link.testRecordId) },
+              type: 'RETEST',
+              outcome: 'NOT_RUN',
+              requirementRevision: requirement.revision,
+              cycle: requirement.testCycle,
+            },
+          });
+          for (const record of pending) {
+            const testCase = await c.tx.testCase.findUnique({ where: { id: record.testCaseId } });
+            rule(
+              testCase?.revision !== record.caseRevision,
+              '存在待填写的有效复测记录，请先完成该记录再更新修复构建',
+            );
+          }
+          row = await c.tx.defect.update({ where: { id }, data: { fixedBuildId: build.id } });
+          row = await this.disposition(c, row, 'AWAITING_RETEST', action, reason, d.evidence);
         } else if (action === 'retest') {
           this.support.assigned(c, row.retesterId);
           rule(row.status === 'AWAITING_RETEST', '当前缺陷不在待复测状态');
@@ -445,7 +512,7 @@ export class DefectsService {
               '复测记录与结论不一致',
             );
             const fix = await c.tx.defectDisposition.findFirst({
-              where: { defectId: id, action: 'fix' },
+              where: { defectId: id, action: { in: ['fix', 'updateFixBuild'] } },
               orderBy: { createdAt: 'desc' },
             });
             rule(fix && record.createdAt >= fix.createdAt, '复测记录必须在提交修复之后创建');

@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useEffect, useState, type AriaAttributes } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Alert, Button, Empty, Select, Spin } from 'antd';
@@ -21,6 +22,7 @@ export function MemberSelect({
   onChange?: (email?: string) => void;
   id?: string;
 } & Pick<AriaAttributes, 'aria-describedby' | 'aria-invalid' | 'aria-required'>) {
+  useLocale();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<ProjectMemberOption>();
@@ -55,11 +57,11 @@ export function MemberSelect({
       <Select
         {...aria}
         id={id}
-        aria-label="选择成员"
+        aria-label={t('选择成员')}
         autoFocus
         size="large"
         style={{ width: '100%' }}
-        placeholder="选择账号，或搜索姓名 / 邮箱"
+        placeholder={t('选择账号，或搜索姓名 / 邮箱')}
         showSearch
         filterOption={false}
         labelInValue
@@ -97,10 +99,10 @@ export function MemberSelect({
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
                 candidates.isError
-                  ? '候选成员加载失败，请重试'
+                  ? t('候选成员加载失败，请重试')
                   : query
-                    ? '没有匹配的可添加账号'
-                    : '暂无可添加账号'
+                    ? t('没有匹配的可添加账号')
+                    : t('暂无可添加账号')
               }
             />
           )
@@ -121,7 +123,10 @@ export function MemberSelect({
             {menu}
             {!searching && !candidates.isError && (
               <div className={styles.memberSelectFooter}>
-                <span>共 {candidates.data?.pages[0]?.total ?? 0} 位可添加成员</span>
+                <span>
+                  {t('共 ')}
+                  {candidates.data?.pages[0]?.total ?? 0} {t(' 位可添加成员')}
+                </span>
                 {candidates.hasNextPage && (
                   <Button
                     size="small"
@@ -130,7 +135,7 @@ export function MemberSelect({
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => void candidates.fetchNextPage()}
                   >
-                    加载更多
+                    {t('加载更多')}
                   </Button>
                 )}
               </div>
@@ -146,7 +151,7 @@ export function MemberSelect({
           title={errorMessage(candidates.error)}
           action={
             <Button size="small" onClick={() => void candidates.refetch()}>
-              重试
+              {t('重试')}
             </Button>
           }
         />

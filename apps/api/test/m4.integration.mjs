@@ -55,7 +55,7 @@ async function login(u) {
     .expect(201);
   return { agent, csrf: r.body.csrfToken };
 }
-async function reqNew() {
+async function reqNew(extra = {}) {
   const path = `${base()}/requirements`;
   const r = (
     await post(sessions.owner, path, {
@@ -63,6 +63,7 @@ async function reqNew() {
       description: '验证码仅使用一次',
       acceptanceCriteria: '拒绝重复使用',
       ownerId: users.owner.id,
+      ...extra,
     }).expect(201)
   ).body.id;
   await post(sessions.owner, `${path}/${r}/submit`, {
@@ -108,8 +109,8 @@ async function caseNew(requirementIds, ready = true) {
   }
   return id;
 }
-async function setup() {
-  const requirement = await reqNew(),
+async function setup(extra = {}) {
+  const requirement = await reqNew(extra),
     task = await taskNew(requirement),
     testCase = await caseNew([requirement]);
   return { requirement, task, testCase };
@@ -163,6 +164,7 @@ before(async () => {
     'tester',
     'tester2',
     'viewer',
+    'publisher',
     'outsider',
   ])
     users[role] = await db.user.create({
@@ -187,7 +189,7 @@ before(async () => {
     if (name === 'main') project = r.body.id;
     else other = r.body.id;
   }
-  for (const role of ['developer', 'developer2', 'tester', 'tester2', 'viewer'])
+  for (const role of ['developer', 'developer2', 'tester', 'tester2', 'viewer', 'publisher'])
     await post(sessions.owner, `${base()}/members`, {
       email: users[role].email,
       roles: [
@@ -195,7 +197,9 @@ before(async () => {
           ? 'DEVELOPER'
           : role.startsWith('tester')
             ? 'TESTER'
-            : 'VIEWER',
+            : role === 'publisher'
+              ? 'RELEASE_MANAGER'
+              : 'VIEWER',
       ],
     }).expect(201);
 });
@@ -266,6 +270,53 @@ test('提前测试不会越过开发任务；所有任务完成后才允许需�
   assert.equal((await reqGet(f.requirement)).status, 'IMPLEMENTING');
   await taskAct(f.task, 'complete');
   assert.equal((await reqGet(f.requirement)).status, 'COMPLETED');
+});
+test('已关闭迭代仍可新建测试记录、提交结果和完成缺陷复测', async () => {
+  const iterations = `${base()}/iterations`;
+  const iteration = (
+    await post(sessions.owner, iterations, {
+      name: `测试后续验证 ${randomUUID()}`,
+      goal: '完成开发与首次测试',
+      ownerId: users.owner.id,
+      startDate: '2026-10-01',
+      endDate: '2026-10-31',
+    }).expect(201)
+  ).body.id;
+  await post(sessions.owner, `${iterations}/${iteration}/start`, { version: 1 }).expect(201);
+  const f = await setup({ iterationId: iteration });
+  await taskAct(f.task, 'start');
+  await taskAct(f.task, 'complete');
+  const first = await recordNew(f);
+  await (await finish(first, 'PASSED')).expect(201);
+  await post(sessions.owner, `${iterations}/${iteration}/close`, {
+    version: 2,
+    summary: '首次验证完成，后续可继续回归',
+  }).expect(201);
+  const closed = await get(`${iterations}/${iteration}`);
+  assert.equal(closed.status, 'CLOSED');
+  assert.equal((await reqGet(f.requirement)).iteration.id, iteration);
+
+  await post(sessions.viewer, quality('records'), {
+    requirementId: f.requirement,
+    testCaseId: f.testCase,
+    environment: 'qa-chrome',
+  }).expect(403);
+  const regression = await recordNew(f);
+  assert.deepEqual((await get(quality('records', regression))).allowedActions, ['finish']);
+  const failure = (await (await finish(regression, 'FAILED')).expect(201)).body;
+  const bug = failure.defectIds[0];
+  assert.ok(bug);
+  assert.equal((await reqGet(f.requirement)).status, 'TESTING');
+  await fix(bug);
+  const retest = await recordNew(f, { type: 'RETEST' });
+  await (await finish(retest, 'PASSED')).expect(201);
+  assert.equal((await get(quality('defects', bug))).status, 'CLOSED');
+  assert.equal((await reqGet(f.requirement)).status, 'COMPLETED');
+  const after = await get(`${iterations}/${iteration}`);
+  assert.equal(after.status, 'CLOSED');
+  assert.equal(after.version, closed.version);
+  assert.equal(after.closedAt, closed.closedAt);
+  assert.equal(after.closeSummary, closed.closeSummary);
 });
 test('未通过自动生成关联缺陷；重复失败复用缺陷；失败和通过复测保留多条记录', async () => {
   const f = await setup();
@@ -581,6 +632,17 @@ test('有构建上下文时修复和复测必须使用新构建，版本范围�
     requirementIds: [f.requirement],
     taskIds: [f.task],
   }).expect(201);
+  const afterMetadata = await get(quality('releases', release));
+  assert.equal(afterMetadata.scopeVersion, r.scopeVersion);
+  assert.equal((await reqGet(f.requirement)).status, 'COMPLETED');
+  assert.equal((await get(quality('records', retry))).current, true);
+  await post(sessions.owner, `${quality('releases', release)}/update`, {
+    version: afterMetadata.version,
+    name: afterMetadata.name,
+    description: '实际修改范围',
+    requirementIds: [f.requirement],
+    taskIds: [],
+  }).expect(201);
   assert.equal((await reqGet(f.requirement)).status, 'ACCEPTING');
   assert.equal((await get(quality('records', retry))).current, false);
   await post(sessions.tester, quality('records'), {
@@ -592,5 +654,303 @@ test('有构建上下文时修复和复测必须使用新构建，版本范围�
   const b3 = await build(),
     latest = await recordNew(f, { buildId: b3 });
   await (await finish(latest, 'PASSED')).expect(201);
+  assert.equal((await reqGet(f.requirement)).status, 'COMPLETED');
+});
+
+test('简化发布：检查范围及严重缺陷，失败重试、验证、回滚与权限', async () => {
+  const f = await setup();
+  const release = (
+    await post(sessions.owner, quality('releases'), {
+      name: `发布 ${randomUUID()}`,
+      requirementIds: [f.requirement],
+      taskIds: [f.task],
+    }).expect(201)
+  ).body.id;
+  const path = quality('releases', release);
+  const build = (
+    await post(sessions.developer, quality('builds'), {
+      releaseId: release,
+      identifier: `build-${randomUUID()}`,
+    }).expect(201)
+  ).body.id;
+  const check = async (id = build) => get(`${path}/check?buildId=${id}`);
+  assert.equal((await check()).canPublish, false);
+  assert.ok((await check()).issues.some((item) => item.kind === 'REQUIREMENT'));
+  let row = await get(path);
+  const input = {
+    version: row.version,
+    buildId: build,
+    outcome: 'SUCCESS',
+    occurredAt: new Date().toISOString(),
+    notes: '',
+  };
+  await post(sessions.owner, `${path}/publish`, input).expect(422);
+  await post(sessions.viewer, `${path}/publish`, input).expect(403);
+  await post(sessions.developer, `${path}/publish`, input).expect(403);
+  await sessions.outsider.agent.get(`/api/v1${path}/check?buildId=${build}`).expect(404);
+  await taskAct(f.task, 'start');
+  await taskAct(f.task, 'complete');
+  const record = await recordNew(f, { buildId: build });
+  await (await finish(record, 'PASSED')).expect(201);
+  assert.equal((await reqGet(f.requirement)).status, 'COMPLETED');
+  assert.equal((await check()).canPublish, true);
+  const bug = (
+    await post(sessions.tester, quality('defects'), defectInput(f.requirement)).expect(201)
+  ).body.id;
+  assert.ok((await check()).issues.some((item) => item.kind === 'DEFECT' && item.id === bug));
+  row = await get(path);
+  await post(sessions.owner, `${path}/publish`, { ...input, version: row.version }).expect(422);
+  await defectAct(bug, 'dispose', { conclusion: 'NOT_A_DEFECT', evidence: '确认并非缺陷' });
+  assert.equal((await check()).canPublish, true);
+  const outsideRequirement = await reqNew();
+  const master = (
+    await post(
+      sessions.tester,
+      quality('defects'),
+      defectInput(outsideRequirement, { severity: 'MINOR' }),
+    ).expect(201)
+  ).body.id;
+  const duplicate = (
+    await post(sessions.tester, quality('defects'), defectInput(f.requirement)).expect(201)
+  ).body.id;
+  await defectAct(duplicate, 'dispose', {
+    conclusion: 'DUPLICATE',
+    duplicateOfId: master,
+    evidence: '相同问题',
+  });
+  assert.equal((await check()).canPublish, false);
+  await defectAct(master, 'dispose', { conclusion: 'NOT_A_DEFECT', evidence: '确认并非缺陷' });
+  assert.equal((await check()).canPublish, true);
+  row = await get(path);
+  const failed = { ...input, version: row.version, outcome: 'FAILED', notes: '部署失败' };
+  const key = randomUUID();
+  const first = await post(sessions.publisher, `${path}/publish`, failed, key).expect(201);
+  const retry = await post(sessions.publisher, `${path}/publish`, failed, key).expect(201);
+  assert.equal(first.body.id, retry.body.id);
+  assert.notEqual((await get(path)).status, 'RELEASED');
+  row = await get(path);
+  const success = (
+    await post(sessions.owner, `${path}/publish`, { ...input, version: row.version }).expect(201)
+  ).body.id;
+  row = await get(path);
+  assert.equal(row.status, 'RELEASED');
+  assert.equal(row.activePublish.id, success);
+  const events = await get(`${path}/events`);
+  assert.equal(events.total, 2);
+  assert.equal(events.items[0].checkSnapshot.requirements[0].id, f.requirement);
+  await post(sessions.viewer, `${path}/followup`, {
+    version: row.version,
+    publishId: success,
+    outcome: 'PASSED',
+    occurredAt: input.occurredAt,
+  }).expect(403);
+  await post(sessions.owner, `${path}/followup`, {
+    version: row.version,
+    publishId: success,
+    outcome: 'FAILED',
+    occurredAt: input.occurredAt,
+    notes: '线上验证未通过',
+  }).expect(201);
+  row = await get(path);
+  await post(sessions.owner, `${path}/followup`, {
+    version: row.version,
+    publishId: success,
+    outcome: 'PASSED',
+    occurredAt: input.occurredAt,
+    notes: '线上恢复正常',
+  }).expect(201);
+  row = await get(path);
+  await post(sessions.owner, `${path}/followup`, {
+    version: row.version,
+    publishId: success,
+    outcome: 'ROLLBACK',
+    occurredAt: input.occurredAt,
+    notes: '恢复上一版本',
+  }).expect(201);
+  row = await get(path);
+  assert.notEqual(row.status, 'RELEASED');
+  await post(sessions.owner, `${path}/followup`, {
+    version: row.version,
+    publishId: success,
+    outcome: 'PASSED',
+    occurredAt: input.occurredAt,
+  }).expect(422);
+  const history = await get(`${path}/events`);
+  assert.deepEqual(
+    history.items.map((item) => item.kind),
+    ['ROLLBACK', 'VERIFY_PASSED', 'VERIFY_FAILED', 'PUBLISH_SUCCESS', 'PUBLISH_FAILED'],
+  );
+  await assert.rejects(
+    db.releaseEvent.update({ where: { id: success }, data: { notes: '覆盖历史' } }),
+  );
+  await assert.rejects(db.releaseEvent.delete({ where: { id: success } }));
+  await assert.rejects(
+    db.$transaction(async (tx) => {
+      await tx.project.delete({ where: { id: project } });
+      throw new Error('project-delete-rollback');
+    }),
+    /project-delete-rollback/,
+  );
+});
+
+test('版本范围变化后重新检查需求与构建，不能提交旧范围', async () => {
+  const f = await setup();
+  await taskAct(f.task, 'start');
+  await taskAct(f.task, 'complete');
+  const release = (
+    await post(sessions.owner, quality('releases'), {
+      name: `范围变化 ${randomUUID()}`,
+      requirementIds: [f.requirement],
+      taskIds: [f.task],
+    }).expect(201)
+  ).body.id;
+  const path = quality('releases', release);
+  const createBuild = async () =>
+    (
+      await post(sessions.developer, quality('builds'), {
+        releaseId: release,
+        identifier: `build-${randomUUID()}`,
+      }).expect(201)
+    ).body.id;
+  const oldBuild = await createBuild();
+  const record = await recordNew(f, { buildId: oldBuild });
+  await (await finish(record, 'PASSED')).expect(201);
+  assert.equal((await get(`${path}/check?buildId=${oldBuild}`)).canPublish, true);
+  const version = await get(path);
+  await post(sessions.owner, `${path}/update`, {
+    version: version.version,
+    name: version.name,
+    description: '范围更新',
+    requirementIds: [f.requirement],
+    taskIds: [],
+  }).expect(201);
+  const stale = await get(`${path}/check?buildId=${oldBuild}`);
+  assert.equal(stale.canPublish, false);
+  assert.ok(stale.issues.some((issue) => issue.kind === 'BUILD'));
+  const newBuild = await createBuild();
+  assert.ok(
+    (await get(`${path}/check?buildId=${newBuild}`)).issues.some(
+      (issue) => issue.kind === 'REQUIREMENT',
+    ),
+  );
+  const currentRecord = await recordNew(f, { buildId: newBuild });
+  await (await finish(currentRecord, 'PASSED')).expect(201);
+  assert.equal((await get(`${path}/check?buildId=${newBuild}`)).canPublish, true);
+  const current = await get(path);
+  await post(sessions.owner, `${path}/publish`, {
+    version: current.version,
+    buildId: oldBuild,
+    outcome: 'SUCCESS',
+    occurredAt: new Date().toISOString(),
+  }).expect(422);
+  const input = {
+    version: current.version,
+    buildId: newBuild,
+    outcome: 'SUCCESS',
+    occurredAt: new Date().toISOString(),
+  };
+  const attempts = await Promise.all([
+    post(sessions.owner, `${path}/publish`, input),
+    post(sessions.owner, `${path}/publish`, input),
+  ]);
+  assert.deepEqual(attempts.map((result) => result.status).sort(), [201, 409]);
+  assert.equal((await get(`${path}/events`)).total, 1);
+});
+
+test('待复测缺陷可以由开发更新失效的修复构建并继续复测', async () => {
+  const f = await setup();
+  await taskAct(f.task, 'start');
+  await taskAct(f.task, 'complete');
+  const release = (
+    await post(sessions.owner, quality('releases'), {
+      name: `复测构建 ${randomUUID()}`,
+      requirementIds: [f.requirement],
+      taskIds: [f.task],
+    }).expect(201)
+  ).body.id;
+  const build = async () =>
+    (
+      await post(sessions.developer, quality('builds'), {
+        releaseId: release,
+        identifier: `build-${randomUUID()}`,
+      }).expect(201)
+    ).body.id;
+  const b1 = await build();
+  const initial = await recordNew(f, { buildId: b1 });
+  const bug = (await (await finish(initial, 'FAILED')).expect(201)).body.defectIds[0];
+  await defectAct(bug, 'confirm');
+  await defectAct(bug, 'start', {}, sessions.developer);
+  const b2 = await build();
+  await defectAct(bug, 'fix', { buildId: b2, evidence: '已修复' }, sessions.developer);
+  let releaseRow = await get(quality('releases', release));
+  await post(sessions.owner, `${quality('releases', release)}/update`, {
+    version: releaseRow.version,
+    name: releaseRow.name,
+    description: '',
+    requirementIds: [f.requirement],
+    taskIds: [],
+  }).expect(201);
+  await post(sessions.tester, quality('records'), {
+    requirementId: f.requirement,
+    testCaseId: f.testCase,
+    buildId: b2,
+    environment: 'qa',
+    type: 'RETEST',
+    defectIds: [bug],
+  }).expect(422);
+  const b3 = await build();
+  const options = await get(
+    `${quality('options')}?kind=builds&releaseId=${release}&requirementId=${f.requirement}&pageSize=100`,
+  );
+  assert.equal(options.items.find((item) => item.id === b2).scopeCurrent, false);
+  assert.equal(options.items.find((item) => item.id === b3).scopeCurrent, true);
+  assert.equal(options.items.find((item) => item.id === b3).matchesRequirement, true);
+  const unrelated = await reqNew();
+  const unrelatedOptions = await get(
+    `${quality('options')}?kind=builds&releaseId=${release}&requirementId=${unrelated}&pageSize=100`,
+  );
+  assert.equal(unrelatedOptions.items.find((item) => item.id === b3).matchesRequirement, false);
+  let defect = await get(quality('defects', bug));
+  const payload = { version: defect.version, buildId: b3, reason: '修复已包含在当前范围构建中' };
+  await post(sessions.tester, `${quality('defects', bug)}/updateFixBuild`, payload).expect(403);
+  await post(sessions.developer2, `${quality('defects', bug)}/updateFixBuild`, payload).expect(403);
+  await post(sessions.developer, `${quality('defects', bug)}/updateFixBuild`, {
+    ...payload,
+    buildId: b2,
+  }).expect(422);
+  const key = randomUUID();
+  const updated = await post(
+    sessions.developer,
+    `${quality('defects', bug)}/updateFixBuild`,
+    payload,
+    key,
+  ).expect(201);
+  const replay = await post(
+    sessions.developer,
+    `${quality('defects', bug)}/updateFixBuild`,
+    payload,
+    key,
+  ).expect(201);
+  assert.equal(updated.body.id, replay.body.id);
+  defect = await get(quality('defects', bug));
+  assert.equal(
+    defect.dispositions.items.filter((item) => item.action === 'updateFixBuild').length,
+    1,
+  );
+  assert.equal(defect.fixedBuildId, b3);
+  assert.equal(defect.status, 'AWAITING_RETEST');
+  assert.ok(
+    defect.dispositions.items.some(
+      (item) => item.action === 'updateFixBuild' && item.buildId === b3,
+    ),
+  );
+  const retry = await recordNew(f, { type: 'RETEST', buildId: b3, defectIds: [bug] });
+  const b4 = await build();
+  await post(sessions.developer, `${quality('defects', bug)}/updateFixBuild`, {
+    version: defect.version,
+    buildId: b4,
+  }).expect(422);
+  await (await finish(retry, 'PASSED')).expect(201);
+  assert.equal((await get(quality('defects', bug))).status, 'CLOSED');
   assert.equal((await reqGet(f.requirement)).status, 'COMPLETED');
 });

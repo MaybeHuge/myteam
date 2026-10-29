@@ -35,3 +35,9 @@
 运行日志位于 `.local/lightweight-check.log`、`.local/lightweight-all-integration.log`、`.local/lightweight-navigation-browser.log`、`.local/lightweight-records-browser-final.log` 和 `.local/lightweight-web-final-build.log`。桌面及窄屏截图位于 `test-results/lightweight-test-record-desktop.png`、`test-results/lightweight-test-record-mobile.png`。
 
 测试数据库和业务数据库隔离。演示数据脚本已改为生成测试记录流程，本次未运行该脚本，也未向业务库添加演示数据。
+
+## 2026-10-29：范围失效后的复测
+
+- 版本仅修改名称或说明、关联范围不变时，范围版本与现有测试记录保持不变；实际范围变更仍使旧构建与测试依据失效。
+- 待复测时开发负责人可确认并更新实际修复构建，系统校验项目、目标版本、当前范围及待完成复测记录；原历史不改写。
+- 隔离测试覆盖权限、旧构建拒绝、幂等、待测试记录冲突，以及浏览器从更新构建到复测通过的流程。

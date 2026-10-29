@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, Select, Space } from 'antd';
@@ -26,6 +27,7 @@ export function RequirementPicker({
   id?: string;
   'aria-label'?: string;
 }) {
+  useLocale();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(initial);
@@ -79,12 +81,12 @@ export function RequirementPicker({
       filterOption={false}
       placeholder={
         purpose === 'iteration'
-          ? '暂不安排迭代'
+          ? t('暂不安排迭代')
           : purpose === 'filterIteration'
-            ? '全部迭代'
+            ? t('全部迭代')
             : purpose === 'filterOwner'
-              ? '全部负责人'
-              : '搜索项目成员'
+              ? t('全部负责人')
+              : t('搜索项目成员')
       }
       value={value ?? undefined}
       onChange={(id) => onChange?.(id ?? null)}
@@ -94,10 +96,10 @@ export function RequirementPicker({
       options={items.map((item) => ({ value: item.id, label: item.name }))}
       notFoundContent={
         options.isError
-          ? '加载失败，请重试'
+          ? t('加载失败，请重试')
           : options.isFetching
-            ? '正在加载…'
-            : '没有符合条件的选项'
+            ? t('正在加载…')
+            : t('没有符合条件的选项')
       }
       popupRender={(menu) => (
         <>
@@ -105,7 +107,7 @@ export function RequirementPicker({
           <Space style={{ padding: 8 }}>
             {options.isError && (
               <Button size="small" onClick={() => void options.refetch()}>
-                重新加载选项
+                {t('重新加载选项')}
               </Button>
             )}
             {options.hasNextPage && (
@@ -114,7 +116,7 @@ export function RequirementPicker({
                 loading={options.isFetchingNextPage}
                 onClick={() => void options.fetchNextPage()}
               >
-                加载更多选项
+                {t('加载更多选项')}
               </Button>
             )}
           </Space>

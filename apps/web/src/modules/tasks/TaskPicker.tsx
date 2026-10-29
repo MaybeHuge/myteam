@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Button, Select } from 'antd';
@@ -24,6 +25,7 @@ export function TaskPicker({
   id?: string;
   'aria-label'?: string;
 }) {
+  useLocale();
   const [search, setSearch] = useState(''),
     [q, setQ] = useState(''),
     [picked, setPicked] = useState(initial);
@@ -56,10 +58,10 @@ export function TaskPicker({
       value={value ?? undefined}
       placeholder={
         purpose === 'people'
-          ? '搜索可分配成员'
+          ? t('搜索可分配成员')
           : purpose === 'helpers'
-            ? '搜索可协助成员'
-            : '搜索关联需求'
+            ? t('搜索可协助成员')
+            : t('搜索关联需求')
       }
       loading={query.isFetching}
       onChange={(id) => onChange?.(id ?? null)}
@@ -73,14 +75,18 @@ export function TaskPicker({
         }
       }}
       notFoundContent={
-        query.isFetching ? '正在加载…' : query.isError ? '加载失败，请重试' : '没有符合条件的选项'
+        query.isFetching
+          ? t('正在加载…')
+          : query.isError
+            ? t('加载失败，请重试')
+            : t('没有符合条件的选项')
       }
       popupRender={(menu) => (
         <>
           {menu}
           {query.isError && (
             <Button size="small" onClick={() => void query.refetch()}>
-              重试加载选项
+              {t('重试加载选项')}
             </Button>
           )}
           {query.hasNextPage && (
@@ -89,7 +95,7 @@ export function TaskPicker({
               loading={query.isFetchingNextPage}
               onClick={() => void query.fetchNextPage()}
             >
-              加载更多选项
+              {t('加载更多选项')}
             </Button>
           )}
         </>

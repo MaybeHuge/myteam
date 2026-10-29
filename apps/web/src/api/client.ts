@@ -5,6 +5,7 @@ import {
   type SessionResponse,
 } from '@myteam/contracts';
 import type { QueryClient } from '@tanstack/react-query';
+import { getLocale, t } from '../i18n/runtime';
 
 export class ApiError extends Error {
   constructor(
@@ -25,6 +26,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
       credentials: 'same-origin',
       headers: {
         Accept: 'application/json',
+        'Accept-Language': getLocale(),
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
         ...options.headers,
       },
@@ -71,4 +73,4 @@ export async function login(email: string, password: string) {
   );
 }
 export const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : '操作失败，请稍后重试';
+  t(error instanceof Error ? error.message : '操作失败，请稍后重试');

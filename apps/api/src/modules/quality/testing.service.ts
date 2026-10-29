@@ -21,6 +21,8 @@ import {
   hasPermission,
   projectRoles,
   testRecordLabels,
+  resolveLocale,
+  translate,
   type Permission,
 } from '@myteam/contracts';
 import type { Prisma, Release } from '../../generated/prisma/client.js';
@@ -61,7 +63,14 @@ export class TestingService {
         const where: Prisma.ReleaseWhereInput = {
           projectId,
           ...(q.q ? { name: { contains: q.q, mode: 'insensitive' } } : {}),
-          ...(q.status ? { status: releaseStatusSchema.parse(q.status) } : {}),
+          ...(q.status
+            ? {
+                status:
+                  q.status === 'UNRELEASED'
+                    ? { notIn: ['RELEASED', 'ARCHIVED'] }
+                    : releaseStatusSchema.parse(q.status),
+              }
+            : {}),
         };
         return releaseListSchema.parse({
           ...q,
@@ -100,8 +109,22 @@ export class TestingService {
         include: { requirement: true, task: true },
       });
       const where = { projectId, releaseId: id };
+      const activePublish =
+        release.status === 'RELEASED'
+          ? await c.tx.releaseEvent.findFirst({
+              where: { projectId, releaseId: id, kind: 'PUBLISH_SUCCESS' },
+              orderBy: { sequence: 'desc' },
+            })
+          : null;
       return releaseDetailSchema.parse({
         ...this.releaseDto(c, release),
+        activePublish: activePublish
+          ? {
+              id: activePublish.id,
+              buildIdentifier: (await this.support.build(c.tx, projectId, activePublish.buildId))
+                .identifier,
+            }
+          : null,
         scope: work.map((w) => ({
           id: w.id,
           kind: w.kind,
@@ -134,8 +157,8 @@ export class TestingService {
       { action: id ? 'release.update' : 'release.create', id, ...d },
       'release:manage',
       async (c) => {
-        if (id) {
-          const old = await this.support.release(c.tx, projectId, id);
+        const old = id ? await this.support.release(c.tx, projectId, id) : null;
+        if (old) {
           checkVersion(old, 'version' in d ? Number(d.version) : 0);
           rule(!['READY', 'RELEASED', 'ARCHIVED'].includes(old.status), '当前版本范围已冻结');
         }
@@ -157,16 +180,21 @@ export class TestingService {
           },
         });
         rule(!existing, '需求或任务已属于其他未交付目标版本');
-        const oldScope = id
-          ? await c.tx.releaseItem.findMany({ where: { releaseId: id, active: true } })
+        const oldScope = old
+          ? await c.tx.releaseItem.findMany({
+              where: { projectId, releaseId: old.id, scopeVersion: old.scopeVersion },
+            })
           : [];
+        const oldIds = new Set(oldScope.map((item) => item.workItemId));
+        const scopeChanged =
+          !old || oldIds.size !== workIds.length || workIds.some((workId) => !oldIds.has(workId));
         const release = id
           ? await c.tx.release.update({
               where: { id },
               data: {
                 name: d.name,
                 description: d.description,
-                scopeVersion: { increment: 1 },
+                ...(scopeChanged ? { scopeVersion: { increment: 1 } } : {}),
                 version: { increment: 1 },
               },
             })
@@ -178,20 +206,21 @@ export class TestingService {
                 createdById: c.actor.userId,
               },
             });
-        if (id)
+        if (id && scopeChanged)
           await c.tx.releaseItem.updateMany({
             where: { releaseId: id, active: true },
             data: { active: false },
           });
-        await c.tx.releaseItem.createMany({
-          data: workIds.map((workItemId) => ({
-            projectId,
-            releaseId: release.id,
-            workItemId,
-            scopeVersion: release.scopeVersion,
-          })),
-        });
-        if (id) {
+        if (scopeChanged)
+          await c.tx.releaseItem.createMany({
+            data: workIds.map((workItemId) => ({
+              projectId,
+              releaseId: release.id,
+              workItemId,
+              scopeVersion: release.scopeVersion,
+            })),
+          });
+        if (id && scopeChanged) {
           const affected = await c.tx.requirement.findMany({
             where: { projectId, id: { in: [...reqIds, ...oldScope.map((l) => l.workItemId)] } },
           });
@@ -298,6 +327,7 @@ export class TestingService {
   }
   async options(projectId: string, req: Request) {
     const d = qualityOptionsQuerySchema.parse(req.query);
+    const locale = resolveLocale(req.get('Accept-Language'));
     return this.support.read(projectId, req, async (c) => {
       const common = { projectId, ...(d.id ? { id: d.id } : {}) },
         paging = {
@@ -313,6 +343,8 @@ export class TestingService {
         releaseId?: string;
         requirementId?: string;
         buildId?: string;
+        scopeCurrent?: boolean;
+        matchesRequirement?: boolean;
       }>;
       let total: number;
       if (d.kind === 'releases') {
@@ -330,7 +362,31 @@ export class TestingService {
           ...(d.q ? { identifier: { contains: d.q, mode: 'insensitive' as const } } : {}),
         };
         const rows = await c.tx.build.findMany({ where, ...paging });
-        items = rows.map((r) => ({ id: r.id, label: r.identifier, releaseId: r.releaseId }));
+        const releases = await c.tx.release.findMany({
+          where: { projectId, id: { in: [...new Set(rows.map((r) => r.releaseId))] } },
+          select: { id: true, scopeVersion: true },
+        });
+        const versions = new Map(releases.map((r) => [r.id, r.scopeVersion]));
+        const links = d.requirementId
+          ? await c.tx.releaseItem.findMany({
+              where: {
+                projectId,
+                releaseId: { in: releases.map((r) => r.id) },
+                workItemId: d.requirementId,
+              },
+              select: { releaseId: true, scopeVersion: true },
+            })
+          : [];
+        const scopes = new Set(links.map((item) => `${item.releaseId}:${item.scopeVersion}`));
+        items = rows.map((r) => ({
+          id: r.id,
+          label: r.identifier,
+          releaseId: r.releaseId,
+          scopeCurrent: versions.get(r.releaseId) === r.scopeVersion,
+          ...(d.requirementId
+            ? { matchesRequirement: scopes.has(`${r.releaseId}:${versions.get(r.releaseId)}`) }
+            : {}),
+        }));
         total = await c.tx.build.count({ where });
       } else if (d.kind === 'tasks' || d.kind === 'requirements') {
         const kind = d.kind === 'tasks' ? 'TASK' : 'REQUIREMENT';
@@ -397,7 +453,7 @@ export class TestingService {
         const rows = await c.tx.testRecord.findMany({ where, ...paging });
         items = rows.map((r) => ({
           id: r.id,
-          label: `${c.project.key}-TR-${String(r.number).padStart(4, '0')} · ${((r.snapshot as Prisma.JsonObject).content as Prisma.JsonObject).title} · ${testRecordLabels[r.outcome]}`,
+          label: `${c.project.key}-TR-${String(r.number).padStart(4, '0')} · ${((r.snapshot as Prisma.JsonObject).content as Prisma.JsonObject).title} · ${translate(testRecordLabels[r.outcome] ?? r.outcome, locale)}`,
           ...(r.buildId ? { buildId: r.buildId } : {}),
         }));
         total = await c.tx.testRecord.count({ where });

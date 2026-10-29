@@ -23,6 +23,8 @@
 
 校验错误可包含 details 数组，但不返回输入密码、堆栈或数据库错误。所有响应携带 X-Request-Id，应用日志使用同一编号。
 
+客户端通过 `Accept-Language` 请求中文或英语（`zh-CN` / `en-US`，接受同语言的区域变体及 q 权重）；缺省或不支持的语言回退中文。错误响应按语言返回 `message` 和自定义字段校验提示，并携带 `Content-Language`、`Vary: Accept-Language`。错误代码、状态枚举、标识和业务数据保持稳定，客户端应依赖 `code` 而非翻译后的文字判断行为。
+
 | HTTP 状态 | 业务代码                | 语义                                   |
 | --------- | ----------------------- | -------------------------------------- |
 | 400       | VALIDATION_ERROR        | 参数/结构无效                          |
@@ -306,3 +308,11 @@ summary 新增 caseReviews/caseRechecks，reviews 统计需求及用例评审之
 缺陷创建的 testCaseIds 和 testRecordIds 均可留空，关联记录自动带出用例。foundBuildId 可选；已有构建上下文的缺陷修复和复测继续校验实际构建。未关联用例的手工缺陷允许不引用测试记录直接登记复测，但必须有原因和证据。
 
 工作台类型 TEST_RECORD 代替 SUBMISSION_REVIEW/TEST_EXECUTION。附件协作目标为 TEST_RECORD。记录提供 current 判断依据是否有效，失效记录不可提交结果。详情与列表只展示服务端给出的 allowedActions；权限仍由服务端独立复查。完整规则见 [ADR-008](adr/008-lightweight-testing-records.md)。
+
+## 简化版本交付接口
+
+- `GET /projects/:projectId/quality/releases/:id/check?buildId=…` 返回当前版本范围、需求状态、构建和阻断原因；`buildId` 可省略，用于提示选择构建。
+- `GET /projects/:projectId/quality/releases/:id/events` 分页返回发布、上线验证及回滚历史。
+- `POST /projects/:projectId/quality/releases/:id/publish` 需发布管理权限、版本号与幂等键，登记成功或失败并在事务内重新检查；成功时版本变为已发布。
+- `POST /projects/:projectId/quality/releases/:id/followup` 对当前成功发布追加验证通过、失败或回滚记录；回滚后版本恢复未发布。
+- 检查快照记录需求修订、测试轮次和构建范围，但不证明所选构建本身经过测试；实际包与测试依据由发布负责人核实。

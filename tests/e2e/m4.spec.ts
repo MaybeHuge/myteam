@@ -392,3 +392,263 @@ test('报告缺陷分步填写并查看分区详情', async ({ page }) => {
     .toBe(true);
   await page.screenshot({ path: 'test-results/defect-detail-mobile.png', fullPage: true });
 });
+
+test('简化发布：检查、失败重试、上线验证和回滚', async ({ page }) => {
+  test.setTimeout(120000);
+  page.setDefaultTimeout(12000);
+  await login(page, 'browser-admin@example.test');
+  const session = await (await page.request.get('/api/v1/auth/me')).json();
+  const stamp = Date.now().toString(36);
+  const project = await post(page, '/projects', {
+    key: `REL${stamp.slice(-6)}`.toUpperCase(),
+    name: `发布测试 ${stamp}`,
+  });
+  const p = project.id;
+  await post(page, `/projects/${p}/status`, { version: 1, status: 'ACTIVE' });
+  const req = await post(page, `/projects/${p}/requirements`, {
+    title: '发布验证需求',
+    description: '覆盖发布流程',
+    acceptanceCriteria: '功能可用',
+    ownerId: session.user.id,
+  });
+  await post(page, `/projects/${p}/requirements/${req.id}/submit`, {
+    version: 1,
+    reviewerId: session.user.id,
+  });
+  await post(page, `/projects/${p}/requirements/${req.id}/approve`, { version: 2 });
+  const task = await post(page, `/projects/${p}/tasks`, {
+    title: '交付任务',
+    requirementId: req.id,
+    assigneeId: session.user.id,
+  });
+  await post(page, `/projects/${p}/tasks/${task.id}/start`, { version: 1 });
+  await post(page, `/projects/${p}/tasks/${task.id}/complete`, { version: 2, reason: '开发完成' });
+  const testCase = await post(page, `/projects/${p}/test-cases`, {
+    title: '交付测试用例',
+    ownerId: session.user.id,
+    requirementIds: [req.id],
+    preconditions: '测试环境可用',
+    steps: [{ action: '执行测试', expected: '功能正常' }],
+  });
+  await post(page, `/projects/${p}/test-cases/${testCase.id}/submit`, {
+    version: 1,
+    reviewerId: session.user.id,
+  });
+  await post(page, `/projects/${p}/test-cases/${testCase.id}/approve`, {
+    version: 2,
+    comment: '确认场景',
+  });
+  const release = await post(page, `/projects/${p}/quality/releases`, {
+    name: '测试版本',
+    requirementIds: [req.id],
+    taskIds: [task.id],
+  });
+  const build = await post(page, `/projects/${p}/quality/builds`, {
+    releaseId: release.id,
+    identifier: 'release-build-01',
+  });
+  const record = await post(page, `/projects/${p}/quality/records`, {
+    testCaseId: testCase.id,
+    requirementId: req.id,
+    buildId: build.id,
+    environment: 'QA',
+  });
+  await post(page, `/projects/${p}/quality/records/${record.id}/finish`, {
+    version: 1,
+    outcome: 'PASSED',
+    actual: '功能正常',
+  });
+  await page.goto(`/projects/${p}?tab=releases&release=${release.id}`);
+  const detail = page.getByRole('dialog', { name: '版本详情', exact: true });
+  await expect(detail.getByText('发布前需要处理')).toBeVisible();
+  await expect(detail.getByRole('button', { name: '登记发布', exact: true })).toBeDisabled();
+  await pick(page, detail.getByRole('combobox').first(), 'release-build-01');
+  await expect(detail.getByText('发布检查通过', { exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await detail.getByText('发布检查通过', { exact: true }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/m5-release-desktop.png' });
+  await detail.getByRole('button', { name: '登记发布', exact: true }).click();
+  let modal = page.getByRole('dialog', { name: '登记发布', exact: true });
+  await pick(page, modal.getByLabel('发布结果', { exact: true }), '失败');
+  await modal.getByLabel('发布说明（选填）').fill('第一次发布失败');
+  await modal.getByRole('button', { name: '保存记录', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(detail.getByText('发布失败', { exact: true })).toBeVisible();
+  await detail.getByRole('button', { name: '登记发布', exact: true }).click();
+  modal = page.getByRole('dialog', { name: '登记发布', exact: true });
+  await modal.getByRole('button', { name: '保存记录', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(detail.getByText('已登记发布', { exact: true })).toBeVisible();
+  await expect(detail.getByRole('button', { name: '登记构建', exact: true })).toHaveCount(0);
+  await detail.getByRole('button', { name: '登记上线验证', exact: true }).click();
+  modal = page.getByRole('dialog', { name: '登记上线验证', exact: true });
+  await pick(page, modal.getByLabel('验证结果', { exact: true }), '失败');
+  await modal.getByRole('button', { name: '保存记录', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(detail.getByText('上线验证失败', { exact: true })).toBeVisible();
+  await detail.getByRole('button', { name: '登记回滚', exact: true }).click();
+  modal = page.getByRole('dialog', { name: '登记回滚', exact: true });
+  await modal.getByLabel('回滚说明（选填）').fill('回到上一版本');
+  await modal.getByRole('button', { name: '保存记录', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  await expect(detail.getByText('已回滚', { exact: true })).toBeVisible();
+  await expect(detail.getByText('未发布', { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await expect(detail.getByRole('heading', { name: '发布与上线' })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+    .toBe(true);
+  await expect
+    .poll(() =>
+      detail.locator('.ant-drawer-body').evaluate((el) => el.scrollWidth <= el.clientWidth),
+    )
+    .toBe(true);
+  await detail.getByRole('heading', { name: '发布与上线' }).scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/m5-release-mobile.png' });
+  await expect
+    .poll(async () => {
+      const box = await detail.boundingBox();
+      return !!box && box.x >= 0 && box.x + box.width <= 391;
+    })
+    .toBe(true);
+});
+
+test('更新失效修复构建后从缺陷发起复测', async ({ page, browser }) => {
+  test.setTimeout(120000);
+  page.setDefaultTimeout(12000);
+  await login(page, 'browser-admin@example.test');
+  const session = await (await page.request.get('/api/v1/auth/me')).json();
+  const stamp = Date.now().toString(36);
+  const project = await post(page, '/projects', {
+    key: `FIX${stamp.slice(-6)}`.toUpperCase(),
+    name: `修复构建 ${stamp}`,
+  });
+  const p = project.id;
+  await post(page, `/projects/${p}/status`, { version: 1, status: 'ACTIVE' });
+  for (const [email, role] of [
+    ['browser-collaborator@example.test', 'DEVELOPER'],
+    ['browser-tester@example.test', 'TESTER'],
+  ])
+    await post(page, `/projects/${p}/members`, { email, roles: [role] });
+  const developers = await (
+    await page.request.get(`/api/v1/projects/${p}/quality/people?purpose=assignee`)
+  ).json();
+  const testers = await (
+    await page.request.get(`/api/v1/projects/${p}/quality/people?purpose=retester`)
+  ).json();
+  const developer = developers.items.find((item: { label: string }) => item.label === '陈青').id;
+  const tester = testers.items.find((item: { label: string }) => item.label === '周宁').id;
+  const req = await post(page, `/projects/${p}/requirements`, {
+    title: '失效构建复测需求',
+    description: '验证修复构建',
+    acceptanceCriteria: '修复后测试通过',
+    ownerId: session.user.id,
+  });
+  await post(page, `/projects/${p}/requirements/${req.id}/submit`, {
+    version: 1,
+    reviewerId: session.user.id,
+  });
+  await post(page, `/projects/${p}/requirements/${req.id}/approve`, { version: 2 });
+  const task = await post(page, `/projects/${p}/tasks`, {
+    title: '开发修复',
+    requirementId: req.id,
+    assigneeId: developer,
+  });
+  await post(page, `/projects/${p}/tasks/${task.id}/start`, {
+    version: 1,
+    reason: '管理员代为准备测试',
+  });
+  await post(page, `/projects/${p}/tasks/${task.id}/complete`, { version: 2, reason: '开发完成' });
+  const testCase = await post(page, `/projects/${p}/test-cases`, {
+    title: '复测构建用例',
+    ownerId: tester,
+    requirementIds: [req.id],
+    preconditions: '测试环境可用',
+    steps: [{ action: '运行功能', expected: '结果正确' }],
+  });
+  await post(page, `/projects/${p}/test-cases/${testCase.id}/submit`, {
+    version: 1,
+    reviewerId: tester,
+  });
+  await post(page, `/projects/${p}/test-cases/${testCase.id}/approve`, {
+    version: 2,
+    comment: '核对场景',
+  });
+  const release = await post(page, `/projects/${p}/quality/releases`, {
+    name: '复测版本',
+    requirementIds: [req.id],
+    taskIds: [task.id],
+  });
+  const makeBuild = (identifier: string) =>
+    post(page, `/projects/${p}/quality/builds`, { releaseId: release.id, identifier });
+  const firstBuild = await makeBuild('旧测试构建');
+  const firstRecord = await post(page, `/projects/${p}/quality/records`, {
+    testCaseId: testCase.id,
+    requirementId: req.id,
+    buildId: firstBuild.id,
+    environment: 'QA',
+  });
+  const result = await post(page, `/projects/${p}/quality/records/${firstRecord.id}/finish`, {
+    version: 1,
+    outcome: 'FAILED',
+    actual: '出现错误',
+    assigneeId: developer,
+    retesterId: tester,
+  });
+  const bug = result.defectIds[0];
+  await post(page, `/projects/${p}/quality/defects/${bug}/confirm`, {
+    version: 1,
+    reason: '确认问题',
+  });
+  await post(page, `/projects/${p}/quality/defects/${bug}/start`, {
+    version: 2,
+    reason: '开始修复',
+  });
+  const oldFix = await makeBuild('旧修复构建');
+  await post(page, `/projects/${p}/quality/defects/${bug}/fix`, { version: 3, buildId: oldFix.id });
+  const releaseRow = await (
+    await page.request.get(`/api/v1/projects/${p}/quality/releases/${release.id}`)
+  ).json();
+  await post(page, `/projects/${p}/quality/releases/${release.id}/update`, {
+    version: releaseRow.version,
+    name: releaseRow.name,
+    description: '范围调整',
+    requirementIds: [req.id],
+    taskIds: [],
+  });
+  const newFix = await makeBuild('当前修复构建');
+  const qaContext = await browser.newContext(),
+    qa = await qaContext.newPage();
+  await login(qa, 'browser-tester@example.test', `/projects/${p}?tab=defects&defect=${bug}`);
+  await expect(qa.getByRole('button', { name: '更新修复构建', exact: true })).toHaveCount(0);
+  const devContext = await browser.newContext(),
+    dev = await devContext.newPage();
+  await login(dev, 'browser-collaborator@example.test', `/projects/${p}?tab=defects&defect=${bug}`);
+  await dev.getByRole('button', { name: '更新修复构建', exact: true }).click();
+  const modal = dev.getByRole('dialog', { name: '更新修复构建', exact: true });
+  await modal.getByLabel('实际修复构建', { exact: true }).click();
+  const options = dev.locator('.ant-select-dropdown:visible .ant-select-item-option');
+  const stale = options.filter({ hasText: '旧修复构建（范围已失效）' });
+  await expect(stale).toHaveAttribute('aria-disabled', 'true');
+  await options.filter({ hasText: '当前修复构建' }).click();
+  await modal.getByRole('button', { name: '更新修复构建', exact: true }).click();
+  await expect(modal).toHaveCount(0);
+  expect(
+    (await (await page.request.get(`/api/v1/projects/${p}/quality/defects/${bug}`)).json())
+      .fixedBuildId,
+  ).toBe(newFix.id);
+  await qa.reload();
+  await qa.getByRole('button', { name: '发起复测', exact: true }).click();
+  const create = qa.getByRole('dialog', { name: '添加测试记录', exact: true });
+  await create.getByLabel('测试环境', { exact: true }).fill('QA');
+  await pick(qa, create.getByRole('combobox', { name: /测试结果$/ }), '通过');
+  await create.getByLabel('实际表现', { exact: true }).fill('问题已修复');
+  await create.getByRole('button', { name: '保存测试结果', exact: true }).click();
+  await expect(create).toHaveCount(0);
+  expect(
+    (await (await page.request.get(`/api/v1/projects/${p}/quality/defects/${bug}`)).json()).status,
+  ).toBe('CLOSED');
+  await devContext.close();
+  await qaContext.close();
+});

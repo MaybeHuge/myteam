@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
@@ -8,6 +9,7 @@ import { ApiError, errorMessage, replaceSession, request } from '../../api/clien
 import { formatTime } from './CollaborationPanel';
 import styles from './collaboration.module.css';
 export function NotificationCenter({ session }: { session: SessionResponse }) {
+  useLocale();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [unread, setUnread] = useState(false);
@@ -39,23 +41,23 @@ export function NotificationCenter({ session }: { session: SessionResponse }) {
       <Badge count={notifications.data?.unread ?? 0} size="small">
         <Button
           type="text"
-          aria-label="站内通知"
+          aria-label={t('站内通知')}
           icon={<BellOutlined />}
           onClick={() => setOpen(true)}
         />
       </Badge>
-      <Drawer title="站内通知" open={open} onClose={() => setOpen(false)} size={440}>
+      <Drawer title={t('站内通知')} open={open} onClose={() => setOpen(false)} size={440}>
         <div className={styles.notificationIntro}>
           <div>
             <span className={styles.eyebrow}>TEAM UPDATES</span>
-            <h2>与你有关的进展</h2>
-            <p>评论、资料和迭代安排，及时接续。</p>
+            <h2>{t('与你有关的进展')}</h2>
+            <p>{t('评论、资料和迭代安排，及时接续。')}</p>
           </div>
           <Switch
             checked={unread}
-            checkedChildren="仅未读"
-            unCheckedChildren="全部"
-            aria-label="仅看未读通知"
+            checkedChildren={t('仅未读')}
+            unCheckedChildren={t('全部')}
+            aria-label={t('仅看未读通知')}
             onChange={(value) => {
               setUnread(value);
               setPage(1);
@@ -70,14 +72,14 @@ export function NotificationCenter({ session }: { session: SessionResponse }) {
             type="error"
             showIcon
             title={errorMessage(notifications.error)}
-            action={<Button onClick={() => void notifications.refetch()}>重试</Button>}
+            action={<Button onClick={() => void notifications.refetch()}>{t('重试')}</Button>}
           />
         ) : (
           <>
             {!notifications.data.items.length ? (
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={unread ? '所有进展都已读完' : '暂时没有通知'}
+                description={unread ? t('所有进展都已读完') : t('暂时没有通知')}
               />
             ) : (
               <div className={styles.notifications}>
@@ -104,19 +106,19 @@ export function NotificationCenter({ session }: { session: SessionResponse }) {
                           setOpen(false);
                         }}
                       >
-                        {item.title}
+                        {t(item.title)}
                       </Link>
                       <time>{formatTime(item.createdAt)}</time>
                       {!item.readAt && (
                         <Button
                           size="small"
                           type="text"
-                          aria-label="标为已读"
+                          aria-label={t('标为已读')}
                           icon={<CheckOutlined aria-hidden />}
                           loading={read.isPending && read.variables === item.id}
                           onClick={() => read.mutate(item.id)}
                         >
-                          标为已读
+                          {t('标为已读')}
                         </Button>
                       )}
                     </div>
