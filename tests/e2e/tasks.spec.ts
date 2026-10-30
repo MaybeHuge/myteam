@@ -28,6 +28,7 @@ test('任务拆解：需求下建任务、认领、估算、开始条件、改�
   await page.setViewportSize({ width: 1440, height: 1000 });
   await login(page, 'browser-admin@example.test');
   await page.getByRole('link', { name: '项目空间', exact: true }).click();
+  await page.getByLabel('搜索项目', { exact: true }).fill('VTEAM');
   await page
     .getByRole('link', { name: /MyTeam 协作平台/ })
     .first()

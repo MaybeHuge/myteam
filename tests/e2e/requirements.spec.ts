@@ -21,6 +21,7 @@ test('需求：不完整草稿、指定评审、退回修改、重新提交、�
   await page.setViewportSize({ width: 1440, height: 1000 });
   await login(page, 'browser-admin@example.test');
   await page.getByRole('link', { name: '项目空间', exact: true }).click();
+  await page.getByLabel('搜索项目', { exact: true }).fill('VTEAM');
   await page
     .getByRole('link', { name: /MyTeam 协作平台/ })
     .first()
