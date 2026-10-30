@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { documentPointerSchema } from './documents/index.js';
+export * from './documents/index.js';
 export { locales, resolveLocale, translate, translateMessage } from './i18n/index.js';
 export type { Locale, TranslationValues } from './i18n/index.js';
 
@@ -594,6 +596,7 @@ export const createRequirementSchema = requirementFields;
 export const updateRequirementSchema = requirementFields.extend({
   ...versionSchema.shape,
   changeReason: z.string().trim().max(500).default(''),
+  documentDraftVersion: z.number().int().positive().optional(),
 });
 export type CreateRequirement = z.infer<typeof createRequirementSchema>;
 export const submitRequirementSchema = versionSchema.extend({
@@ -616,6 +619,7 @@ export const requirementQuerySchema = paginationSchema.extend({
 });
 const requirementPerson = userSchema.pick({ id: true, name: true });
 export const requirementSnapshotSchema = z.object({
+  document: documentPointerSchema.nullable().optional(),
   code: z.string(),
   title: z.string(),
   description: z.string(),
@@ -726,6 +730,7 @@ export const requirementDetailSchema = requirementSchema.extend({
   }),
 });
 export const reviseRequirementSchema = createRequirementSchema.extend({
+  documentDraftVersion: z.number().int().positive().optional(),
   ...versionSchema.shape,
   reason: z.string().trim().min(1, '请填写修订原因').max(500),
   impact: z.string().trim().min(1, '请说明影响范围和处理安排').max(2000),

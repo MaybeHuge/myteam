@@ -147,6 +147,83 @@ const queryParameters = (schema: Parameters<typeof jsonSchema>[0]) => {
   }));
 };
 
+const documentPrefix = '/projects/{projectId}/requirements/{requirementId}/document';
+const documentParameters = [projectPathId, { ...pathId, name: 'requirementId' }];
+const documentPaths: Record<string, unknown> = {
+  [documentPrefix]: {
+    get: {
+      ...securedGet(
+        '读取当前文档或指定固定版本，草稿仅对编写者可见',
+        jsonSchema(quality.requirementDocumentSchema),
+      ),
+      parameters: [
+        ...documentParameters,
+        { name: 'versionId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+      ],
+    },
+    post: securedCommand('创建工作草稿，可选择需求模板', jsonSchema(quality.createDocumentSchema), [
+      ...documentParameters,
+      commandKey,
+    ]),
+  },
+  [`${documentPrefix}/versions`]: {
+    get: {
+      ...securedGet('分页读取固定文档版本', jsonSchema(quality.documentVersionListSchema)),
+      parameters: [...documentParameters, ...queryParameters(quality.paginationSchema)],
+    },
+  },
+  [`${documentPrefix}/images`]: {
+    get: {
+      ...securedGet(
+        '需求编写者分页查看已上传图片，支持找回尚未插入的图片',
+        jsonSchema(quality.documentImageListSchema),
+      ),
+      parameters: [...documentParameters, ...queryParameters(quality.paginationSchema)],
+    },
+    post: {
+      ...securedCommand('上传私有文档图片，PNG/JPEG/WebP，最多 20 MiB', {}, [
+        ...documentParameters,
+        commandKey,
+        {
+          name: 'filename',
+          in: 'query',
+          required: true,
+          schema: { type: 'string', maxLength: 200 },
+        },
+      ]),
+      requestBody: {
+        required: true,
+        content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+      },
+    },
+  },
+  [`${documentPrefix}/images/{imageId}/preview`]: {
+    get: {
+      ...securedGet('校验项目及文档权限后展示图片', {}),
+      parameters: [...documentParameters, { ...pathId, name: 'imageId' }],
+      responses: {
+        '200': {
+          description: '授权图片流',
+          content: Object.fromEntries(
+            ['image/png', 'image/jpeg', 'image/webp'].map((type) => [
+              type,
+              { schema: { type: 'string', format: 'binary' } },
+            ]),
+          ),
+        },
+      },
+    },
+  },
+};
+for (const [action, summary, schema] of [
+  ['save', '乐观锁自动保存草稿，不改变需求修订', quality.saveDocumentSchema],
+  ['reset', '显式恢复当前文档或空白草稿', quality.resetDocumentSchema],
+  ['apply', '原子应用文档并沿用需求修订及测试依据失效流程', quality.applyDocumentSchema],
+] as const)
+  documentPaths[`${documentPrefix}/${action}`] = {
+    post: securedCommand(summary, jsonSchema(schema), [...documentParameters, commandKey]),
+  };
+
 const qualityPaths: Record<string, unknown> = {};
 const qualityPrefix = '/projects/{projectId}/quality';
 for (const [kind, list, detail, input] of [
@@ -268,6 +345,7 @@ export class OpenApiController {
       },
       paths: {
         ...qualityPaths,
+        ...documentPaths,
         '/projects/{projectId}/requirements': {
           get: {
             ...securedGet('分页查询项目需求', jsonSchema(requirementListSchema)),

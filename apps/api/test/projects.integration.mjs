@@ -67,7 +67,12 @@ before(async () => {
   const passwordHash = await argon2.hash(testPassword, { type: argon2.argon2id });
   for (const role of ['admin', 'owner', 'viewer', 'developer', 'outsider'])
     users[role] = await db.user.create({
-      data: { email: email(role), name: role, passwordHash, isSystemAdmin: role === 'admin' },
+      data: {
+        email: email(role),
+        name: `${role}成员${nonce}`,
+        passwordHash,
+        isSystemAdmin: role === 'admin',
+      },
     });
   app = await createApp();
   http = app.getHttpServer();
@@ -237,7 +242,10 @@ test('候选成员支持姓名/邮箱搜索和分页，只列出未加入的可�
     new Set([users.admin.id, users.outsider.id]),
   );
   assert.deepEqual(Object.keys(first.body.items[0]).sort(), ['email', 'id', 'name']);
-  const byName = await sessions.owner.agent.get(path).query({ q: 'OUTSIDER' }).expect(200);
+  const byName = await sessions.owner.agent
+    .get(path)
+    .query({ q: users.outsider.name.toUpperCase() })
+    .expect(200);
   assert.ok(byName.body.items.some((u) => u.id === users.outsider.id));
   const byEmail = await sessions.owner.agent
     .get(path)

@@ -356,12 +356,13 @@ test('审计或通知写入故障时评论、审计及幂等记录一起回滚',
 });
 test('附件通知故障回滚元信息并清理文件，相同幂等键修复后可重试', async () => {
   const key = randomUUID(),
-    count = await db.attachment.count({ where: { projectId: a } });
+    count = await db.attachment.count({ where: { projectId: a } }),
+    objectCount = (await objects()).length;
   await withFailure('notification', async () => {
     await upload(sessions.developer, 'rollback.txt', Buffer.from('rollback'), key).expect(500);
   });
   assert.equal(await db.attachment.count({ where: { projectId: a } }), count);
-  assert.equal((await objects()).length, 1);
+  assert.equal((await objects()).length, objectCount);
   await upload(sessions.developer, 'rollback.txt', Buffer.from('rollback'), key).expect(201);
 });
 test('迭代分配通知与业务在同一事务，通知故障时计划创建回滚', async () => {

@@ -10,9 +10,15 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "@myteam/contracts": "workspace:*",
     "@ant-design/icons": "^6.0.0",
+    "@myteam/contracts": "workspace:*",
     "@tanstack/react-query": "^5.90.0",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/extension-table": "^3.32.0",
+    "@tiptap/extension-text-style": "3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
     "antd": "6.6.8",
     "react": "19.3.1",
     "react-dom": "19.3.1",

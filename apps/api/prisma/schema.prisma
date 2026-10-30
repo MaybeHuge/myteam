@@ -323,34 +323,39 @@ enum RequirementReviewAction {
 }
 
 model Requirement {
-  id                 String                @id @db.Uuid
-  projectId          String                @db.Uuid
-  project            Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  workItem           WorkItem              @relation(fields: [projectId, id], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  id                 String                       @id @db.Uuid
+  projectId          String                       @db.Uuid
+  project            Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem           WorkItem                     @relation(fields: [projectId, id], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
   number             Int
-  type               RequirementType       @default(FUNCTIONAL)
-  priority           RequirementPriority   @default(MEDIUM)
-  description        String                @default("") @db.VarChar(10000)
-  acceptanceCriteria String                @default("") @db.VarChar(5000)
-  ownerId            String?               @db.Uuid
-  owner              User?                 @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: Restrict)
-  reviewerId         String?               @db.Uuid
-  reviewer           User?                 @relation("RequirementReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
-  createdById        String                @db.Uuid
-  createdBy          User                  @relation("RequirementCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  status             RequirementStatus     @default(DRAFT)
-  revision           Int                   @default(1)
-  version            Int                   @default(1)
-  reviewRound        Int                   @default(0)
-  testCycle          Int                   @default(1)
+  type               RequirementType              @default(FUNCTIONAL)
+  priority           RequirementPriority          @default(MEDIUM)
+  description        String                       @default("") @db.VarChar(10000)
+  acceptanceCriteria String                       @default("") @db.VarChar(5000)
+  ownerId            String?                      @db.Uuid
+  owner              User?                        @relation("RequirementOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  reviewerId         String?                      @db.Uuid
+  reviewer           User?                        @relation("RequirementReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  createdById        String                       @db.Uuid
+  createdBy          User                         @relation("RequirementCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  status             RequirementStatus            @default(DRAFT)
+  revision           Int                          @default(1)
+  version            Int                          @default(1)
+  reviewRound        Int                          @default(0)
+  testCycle          Int                          @default(1)
   acceptedRevision   Int?
-  scopeVersion       Int                   @default(0)
+  scopeVersion       Int                          @default(0)
   changes            RequirementChange[]
   testCaseLinks      RequirementCaseLink[]
-  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
+  createdAt          DateTime                     @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime                     @updatedAt @db.Timestamptz(3)
   reviews            RequirementReview[]
   tasks              Task[]
+  documentVersionId  String?                      @db.Uuid
+  documentVersion    RequirementDocumentVersion?  @relation("DocumentHead", fields: [projectId, id, documentVersionId], references: [projectId, requirementId, id], onDelete: NoAction, onUpdate: NoAction)
+  documentDraft      RequirementDocumentDraft?
+  documentVersions   RequirementDocumentVersion[] @relation("DocumentVersions")
+  documentImages     RequirementDocumentImage[]
 
   @@unique([projectId, id])
   @@unique([projectId, number])
@@ -890,4 +895,71 @@ model DefectRecordLink {
   testRecordId String  @db.Uuid
 
   @@unique([defectId, testRecordId])
+}
+
+model RequirementDocumentDraft {
+  id            String      @id @default(uuid()) @db.Uuid
+  projectId     String      @db.Uuid
+  requirementId String      @unique @db.Uuid
+  requirement   Requirement @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  content       Json
+  plainText     String
+  version       Int         @default(1)
+  baseRevision  Int
+  updatedById   String      @db.Uuid
+  updatedByName String      @db.VarChar(200)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime    @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, requirementId])
+}
+
+model RequirementDocumentVersion {
+  id            String                            @id @default(uuid()) @db.Uuid
+  projectId     String                            @db.Uuid
+  requirementId String                            @db.Uuid
+  requirement   Requirement                       @relation("DocumentVersions", fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  heads         Requirement[]                     @relation("DocumentHead")
+  number        Int
+  content       Json
+  plainText     String
+  createdById   String                            @db.Uuid
+  createdByName String                            @db.VarChar(200)
+  createdAt     DateTime                          @default(now()) @db.Timestamptz(3)
+  images        RequirementDocumentVersionImage[]
+
+  @@unique([projectId, requirementId, id])
+  @@unique([requirementId, number])
+}
+
+model RequirementDocumentImage {
+  id              String                            @id @default(uuid()) @db.Uuid
+  projectId       String                            @db.Uuid
+  requirementId   String                            @db.Uuid
+  requirement     Requirement                       @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  uploaderId      String                            @db.Uuid
+  filename        String                            @db.VarChar(200)
+  storageKey      String                            @unique @db.VarChar(80)
+  storageBucket   String                            @db.VarChar(63)
+  contentType     String                            @db.VarChar(80)
+  size            Int
+  sha256          String                            @db.Char(64)
+  draftReferenced Boolean                           @default(false)
+  createdAt       DateTime                          @default(now()) @db.Timestamptz(3)
+  versions        RequirementDocumentVersionImage[]
+
+  @@unique([projectId, requirementId, id])
+  @@index([draftReferenced, createdAt])
+}
+
+model RequirementDocumentVersionImage {
+  projectId     String                     @db.Uuid
+  requirementId String                     @db.Uuid
+  versionId     String                     @db.Uuid
+  imageId       String                     @db.Uuid
+  version       RequirementDocumentVersion @relation(fields: [projectId, requirementId, versionId], references: [projectId, requirementId, id], onDelete: Cascade, onUpdate: NoAction)
+  image         RequirementDocumentImage   @relation(fields: [projectId, requirementId, imageId], references: [projectId, requirementId, id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([versionId, imageId])
+  @@index([imageId])
 }

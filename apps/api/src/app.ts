@@ -39,6 +39,7 @@ export async function createApp() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: process.env.NODE_ENV === 'test' ? false : ['log', 'warn', 'error'],
   });
+  app.useBodyParser('json', { limit: '1mb' });
   app.disable('x-powered-by');
   app.setGlobalPrefix('api/v1');
   app.use(helmet());

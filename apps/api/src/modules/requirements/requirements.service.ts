@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import {
   createRequirementSchema,
+  applyDocumentSchema,
   reviseRequirementSchema,
   updateRequirementSchema,
   requirementQuerySchema,
@@ -19,6 +20,7 @@ import {
   type Permission,
 } from '@myteam/contracts';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { RequirementDocumentsService } from './requirement-documents.service.js';
 import { Database } from '../../infrastructure/database.js';
 import { Commands } from '../../common/commands.js';
 import { CollaborationEvents } from '../../common/collaboration-events.js';
@@ -31,6 +33,7 @@ type Tx = Prisma.TransactionClient;
 type Actor = Awaited<ReturnType<IdentityService['requireSession']>>;
 const person = { id: true, name: true } as const;
 const include = {
+  documentVersion: { select: { id: true, number: true } },
   workItem: { include: { iteration: { select: { id: true, name: true, status: true } } } },
   owner: { select: person },
   reviewer: { select: person },
@@ -47,6 +50,7 @@ export class RequirementsService {
     private readonly identity: IdentityService,
     private readonly projects: ProjectsService,
     private readonly iterations: IterationsService,
+    private readonly documents: RequirementDocumentsService,
   ) {}
   private writable(status: string) {
     return !['ACCEPTING', 'COMPLETED', 'ARCHIVED'].includes(status);
@@ -60,6 +64,7 @@ export class RequirementsService {
     return requirementSnapshotSchema.parse({
       code: `${row.project.key}-REQ-${String(row.number).padStart(4, '0')}`,
       title: row.workItem.title,
+      document: row.documentVersion,
       description: row.description,
       acceptanceCriteria: row.acceptanceCriteria,
       type: row.type,
@@ -126,6 +131,7 @@ export class RequirementsService {
                 OR: [
                   { workItem: { title: { contains: q, mode: 'insensitive' } } },
                   { description: { contains: q, mode: 'insensitive' } },
+                  { documentVersion: { plainText: { contains: q, mode: 'insensitive' } } },
                   ...(number && Number.isSafeInteger(number) && number <= 2147483647
                     ? [{ number }]
                     : []),
@@ -419,237 +425,298 @@ export class RequirementsService {
       },
     );
   }
-  async update(projectId: string, id: string, input: unknown, req: Request) {
-    const actor = await this.identity.requireWrite(req),
+  async update(
+    projectId: string,
+    id: string,
+    input: unknown,
+    req: Request,
+    context?: { tx: Tx; actor: Actor },
+  ) {
+    const actor = context?.actor ?? (await this.identity.requireWrite(req)),
       data = updateRequirementSchema.parse(input);
+    const apply = async (tx: Tx) => {
+      const row = await this.find(tx, projectId, id);
+      this.version(row, data.version);
+      if (row.status !== 'DRAFT')
+        throw new ApiException(
+          422,
+          'BUSINESS_RULE_VIOLATION',
+          '仅草稿可以编辑，评审中和已确认内容须保留本次基线',
+        );
+      await this.plan(tx, projectId, row.workItem.iterationId);
+      if (row.workItem.iterationId && !data.iterationId)
+        throw new ApiException(
+          422,
+          'BUSINESS_RULE_VIOLATION',
+          '已纳入迭代的需求不能直接移出，请调整至其他未关闭迭代或取消',
+        );
+      if (
+        row.workItem.iterationId &&
+        row.workItem.iterationId !== data.iterationId &&
+        !data.changeReason
+      )
+        throw new ApiException(422, 'BUSINESS_RULE_VIOLATION', '调整迭代请填写原因');
+      await this.plan(tx, projectId, data.iterationId);
+      if (data.ownerId) await this.eligible(tx, projectId, data.ownerId);
+      await tx.workItem.update({
+        where: { id },
+        data: { title: data.title, iterationId: data.iterationId },
+      });
+      const documentVersionId =
+        data.documentDraftVersion === undefined
+          ? undefined
+          : await this.documents.apply(tx, row, actor, data.documentDraftVersion);
+      const next = await tx.requirement.update({
+        where: { id },
+        data: {
+          ...(documentVersionId ? { documentVersionId } : {}),
+          ownerId: data.ownerId,
+          description: data.description,
+          acceptanceCriteria: data.acceptanceCriteria,
+          type: data.type,
+          priority: data.priority,
+          version: { increment: 1 },
+          revision: { increment: 1 },
+        },
+        include,
+      });
+      await this.event(
+        tx,
+        actor,
+        req,
+        projectId,
+        id,
+        'requirement.updated',
+        { before: this.snapshot(row), after: this.snapshot(next), reason: data.changeReason },
+        row.ownerId !== data.ownerId ? (data.ownerId ?? undefined) : undefined,
+        `${actor.user.name} 向你分配了需求「${data.title}」`,
+      );
+      return { id };
+    };
+    if (context) return apply(context.tx);
     return this.commands.run(
       actor.userId,
       req.get('idempotency-key'),
       { action: 'requirement.update', projectId, id, ...data },
-      async (tx) => {
-        const row = await this.find(tx, projectId, id);
-        this.version(row, data.version);
-        if (row.status !== 'DRAFT')
-          throw new ApiException(
-            422,
-            'BUSINESS_RULE_VIOLATION',
-            '仅草稿可以编辑，评审中和已确认内容须保留本次基线',
-          );
-        await this.plan(tx, projectId, row.workItem.iterationId);
-        if (row.workItem.iterationId && !data.iterationId)
-          throw new ApiException(
-            422,
-            'BUSINESS_RULE_VIOLATION',
-            '已纳入迭代的需求不能直接移出，请调整至其他未关闭迭代或取消',
-          );
-        if (
-          row.workItem.iterationId &&
-          row.workItem.iterationId !== data.iterationId &&
-          !data.changeReason
-        )
-          throw new ApiException(422, 'BUSINESS_RULE_VIOLATION', '调整迭代请填写原因');
-        await this.plan(tx, projectId, data.iterationId);
-        if (data.ownerId) await this.eligible(tx, projectId, data.ownerId);
-        await tx.workItem.update({
-          where: { id },
-          data: { title: data.title, iterationId: data.iterationId },
-        });
-        const next = await tx.requirement.update({
-          where: { id },
-          data: {
-            ownerId: data.ownerId,
-            description: data.description,
-            acceptanceCriteria: data.acceptanceCriteria,
-            type: data.type,
-            priority: data.priority,
-            version: { increment: 1 },
-            revision: { increment: 1 },
-          },
-          include,
-        });
-        await this.event(
-          tx,
-          actor,
-          req,
-          projectId,
-          id,
-          'requirement.updated',
-          { before: this.snapshot(row), after: this.snapshot(next), reason: data.changeReason },
-          row.ownerId !== data.ownerId ? (data.ownerId ?? undefined) : undefined,
-          `${actor.user.name} 向你分配了需求「${data.title}」`,
-        );
-        return { id };
-      },
+      apply,
       async (tx) => {
         await this.authorize(tx, actor, projectId, req, 'requirement:write', id);
       },
     );
   }
-  async revise(projectId: string, id: string, input: unknown, req: Request) {
-    const actor = await this.identity.requireWrite(req),
+  async revise(
+    projectId: string,
+    id: string,
+    input: unknown,
+    req: Request,
+    context?: { tx: Tx; actor: Actor },
+  ) {
+    const actor = context?.actor ?? (await this.identity.requireWrite(req)),
       data = reviseRequirementSchema.parse(input);
+    const apply = async (tx: Tx) => {
+      const row = await this.find(tx, projectId, id);
+      this.version(row, data.version);
+      if (
+        !['CONFIRMED', 'IMPLEMENTING', 'ACCEPTING', 'TESTING', 'COMPLETED'].includes(row.status) ||
+        !row.acceptedRevision
+      )
+        throw new ApiException(
+          422,
+          'BUSINESS_RULE_VIOLATION',
+          '仅已确认或实现中的需求可以发起新修订',
+        );
+      await this.plan(tx, projectId, row.workItem.iterationId);
+      await this.plan(tx, projectId, data.iterationId);
+      if (row.workItem.iterationId && !data.iterationId)
+        throw new ApiException(
+          422,
+          'BUSINESS_RULE_VIOLATION',
+          '已有迭代不能直接清空，请明确调整去向',
+        );
+      if (data.ownerId) await this.eligible(tx, projectId, data.ownerId);
+      const documentVersionId =
+        data.documentDraftVersion === undefined
+          ? undefined
+          : await this.documents.apply(tx, row, actor, data.documentDraftVersion);
+      const values = (value: {
+        title: string;
+        description: string;
+        acceptanceCriteria: string;
+        type: string;
+        priority: string;
+        ownerId: string | null;
+        iterationId: string | null;
+      }) => [
+        value.title,
+        value.description,
+        value.acceptanceCriteria,
+        value.type,
+        value.priority,
+        value.ownerId,
+        value.iterationId,
+      ];
+      if (
+        !documentVersionId &&
+        JSON.stringify(values(data)) ===
+          JSON.stringify(
+            values({ ...row, title: row.workItem.title, iterationId: row.workItem.iterationId }),
+          )
+      )
+        throw new ApiException(
+          422,
+          'BUSINESS_RULE_VIOLATION',
+          '请实际修改需求内容或责任计划后再发起修订',
+        );
+      const baseline = await tx.requirementReview.findFirst({
+        where: { requirementId: id, revision: row.acceptedRevision, action: 'APPROVED' },
+        orderBy: { round: 'desc' },
+      });
+      if (!baseline) throw new ApiException(409, 'CONFLICT', '缺少已确认基线，请先核对评审历史');
+      const tasks = await tx.task.findMany({
+        where: { projectId, requirementId: id, status: { not: 'CANCELLED' } },
+        select: { id: true, assigneeId: true, helperId: true },
+      });
+      await tx.workItem.update({
+        where: { id },
+        data: { title: data.title, iterationId: data.iterationId },
+      });
+      const next = await tx.requirement.update({
+        where: { id },
+        data: {
+          ...(documentVersionId ? { documentVersionId } : {}),
+          description: data.description,
+          acceptanceCriteria: data.acceptanceCriteria,
+          type: data.type,
+          priority: data.priority,
+          ownerId: data.ownerId,
+          status: 'DRAFT',
+          revision: { increment: 1 },
+          scopeVersion: { increment: 1 },
+          testCycle: { increment: 1 },
+          version: { increment: 1 },
+        },
+        include,
+      });
+      const effects = {
+        testCaseReviewRequired: true,
+        acceptanceInvalidated: true,
+        releaseCheckInvalidated: true,
+      };
+      await tx.testCase.updateMany({
+        where: {
+          projectId,
+          status: { not: 'DEPRECATED' },
+          links: { some: { requirementId: id } },
+        },
+        data: { needsReview: true, version: { increment: 1 } },
+      });
+      await tx.task.updateMany({
+        where: {
+          projectId,
+          requirementId: id,
+          status: { in: ['READY_FOR_TEST', 'TESTING', 'ACCEPTING', 'COMPLETED'] },
+        },
+        data: { status: 'IN_PROGRESS', version: { increment: 1 } },
+      });
+      await tx.workItem.update({ where: { id }, data: { resolution: 'OPEN' } });
+      await tx.workItem.updateMany({
+        where: { id: { in: tasks.map((t) => t.id) } },
+        data: { resolution: 'OPEN' },
+      });
+      const change = await tx.requirementChange.create({
+        data: {
+          projectId,
+          requirementId: id,
+          actorId: actor.userId,
+          fromRevision: row.acceptedRevision,
+          toRevision: next.revision,
+          scopeVersion: next.scopeVersion,
+          reason: data.reason,
+          impact: data.impact,
+          before: baseline.snapshot as Prisma.InputJsonObject,
+          after: this.snapshot(next),
+          affectedTaskIds: tasks.map((task) => task.id),
+          effects,
+        },
+      });
+      await tx.task.updateMany({
+        where: { id: { in: tasks.map((task) => task.id) } },
+        data: { version: { increment: 1 } },
+      });
+      await this.events.record(tx, {
+        actorId: actor.userId,
+        requestId: req.requestId,
+        projectId,
+        target: { targetType: 'REQUIREMENT', targetId: id },
+        action: 'requirement.revised',
+        details: {
+          code: this.snapshot(next).code,
+          title: data.title,
+          changeId: change.id,
+          fromRevision: row.acceptedRevision,
+          toRevision: next.revision,
+          scopeVersion: next.scopeVersion,
+          reason: data.reason,
+          impact: data.impact,
+          affectedTaskIds: tasks.map((task) => task.id),
+          ...effects,
+        },
+        ...(next.ownerId ? { recipientId: next.ownerId } : {}),
+        additionalRecipientIds: [
+          ...new Set(
+            tasks
+              .flatMap((task) => [task.assigneeId, task.helperId])
+              .filter((value): value is string => !!value),
+          ),
+        ],
+        title: `需求「${data.title}」已修订，请核对影响并等待重新评审`.slice(0, 200),
+      });
+      return { id };
+    };
+    if (context) return apply(context.tx);
     return this.commands.run(
       actor.userId,
       req.get('idempotency-key'),
       { action: 'requirement.revise', projectId, id, ...data },
+      apply,
+      async (tx) => {
+        await this.authorize(tx, actor, projectId, req, 'requirement:write', id);
+      },
+    );
+  }
+  async applyDocument(projectId: string, id: string, input: unknown, req: Request) {
+    const data = applyDocumentSchema.parse(input);
+    const actor = await this.identity.requireWrite(req);
+    return this.commands.run(
+      actor.userId,
+      req.get('idempotency-key'),
+      { action: 'requirement.document.apply', projectId, id, ...data },
       async (tx) => {
         const row = await this.find(tx, projectId, id);
-        this.version(row, data.version);
-        if (
-          !['CONFIRMED', 'IMPLEMENTING', 'ACCEPTING', 'TESTING', 'COMPLETED'].includes(
-            row.status,
-          ) ||
-          !row.acceptedRevision
-        )
-          throw new ApiException(
-            422,
-            'BUSINESS_RULE_VIOLATION',
-            '仅已确认或实现中的需求可以发起新修订',
-          );
-        await this.plan(tx, projectId, row.workItem.iterationId);
-        await this.plan(tx, projectId, data.iterationId);
-        if (row.workItem.iterationId && !data.iterationId)
-          throw new ApiException(
-            422,
-            'BUSINESS_RULE_VIOLATION',
-            '已有迭代不能直接清空，请明确调整去向',
-          );
-        if (data.ownerId) await this.eligible(tx, projectId, data.ownerId);
-        const values = (value: {
-          title: string;
-          description: string;
-          acceptanceCriteria: string;
-          type: string;
-          priority: string;
-          ownerId: string | null;
-          iterationId: string | null;
-        }) => [
-          value.title,
-          value.description,
-          value.acceptanceCriteria,
-          value.type,
-          value.priority,
-          value.ownerId,
-          value.iterationId,
-        ];
-        if (
-          JSON.stringify(values(data)) ===
-          JSON.stringify(
-            values({ ...row, title: row.workItem.title, iterationId: row.workItem.iterationId }),
-          )
-        )
-          throw new ApiException(
-            422,
-            'BUSINESS_RULE_VIOLATION',
-            '请实际修改需求内容或责任计划后再发起修订',
-          );
-        const baseline = await tx.requirementReview.findFirst({
-          where: { requirementId: id, revision: row.acceptedRevision, action: 'APPROVED' },
-          orderBy: { round: 'desc' },
-        });
-        if (!baseline) throw new ApiException(409, 'CONFLICT', '缺少已确认基线，请先核对评审历史');
-        const tasks = await tx.task.findMany({
-          where: { projectId, requirementId: id, status: { not: 'CANCELLED' } },
-          select: { id: true, assigneeId: true, helperId: true },
-        });
-        await tx.workItem.update({
-          where: { id },
-          data: { title: data.title, iterationId: data.iterationId },
-        });
-        const next = await tx.requirement.update({
-          where: { id },
-          data: {
-            description: data.description,
-            acceptanceCriteria: data.acceptanceCriteria,
-            type: data.type,
-            priority: data.priority,
-            ownerId: data.ownerId,
-            status: 'DRAFT',
-            revision: { increment: 1 },
-            scopeVersion: { increment: 1 },
-            testCycle: { increment: 1 },
-            version: { increment: 1 },
-          },
-          include,
-        });
-        const effects = {
-          testCaseReviewRequired: true,
-          acceptanceInvalidated: true,
-          releaseCheckInvalidated: true,
+        const fields = {
+          title: row.workItem.title,
+          description: row.description,
+          acceptanceCriteria: row.acceptanceCriteria,
+          type: row.type,
+          priority: row.priority,
+          ownerId: row.ownerId,
+          iterationId: row.workItem.iterationId,
+          version: data.requirementVersion,
+          documentDraftVersion: data.version,
         };
-        await tx.testCase.updateMany({
-          where: {
+        if (row.status === 'DRAFT') await this.update(projectId, id, fields, req, { tx, actor });
+        else
+          await this.revise(
             projectId,
-            status: { not: 'DEPRECATED' },
-            links: { some: { requirementId: id } },
-          },
-          data: { needsReview: true, version: { increment: 1 } },
-        });
-        await tx.task.updateMany({
-          where: {
-            projectId,
-            requirementId: id,
-            status: { in: ['READY_FOR_TEST', 'TESTING', 'ACCEPTING', 'COMPLETED'] },
-          },
-          data: { status: 'IN_PROGRESS', version: { increment: 1 } },
-        });
-        await tx.workItem.update({ where: { id }, data: { resolution: 'OPEN' } });
-        await tx.workItem.updateMany({
-          where: { id: { in: tasks.map((t) => t.id) } },
-          data: { resolution: 'OPEN' },
-        });
-        const change = await tx.requirementChange.create({
-          data: {
-            projectId,
-            requirementId: id,
-            actorId: actor.userId,
-            fromRevision: row.acceptedRevision,
-            toRevision: next.revision,
-            scopeVersion: next.scopeVersion,
-            reason: data.reason,
-            impact: data.impact,
-            before: baseline.snapshot as Prisma.InputJsonObject,
-            after: this.snapshot(next),
-            affectedTaskIds: tasks.map((task) => task.id),
-            effects,
-          },
-        });
-        await tx.task.updateMany({
-          where: { id: { in: tasks.map((task) => task.id) } },
-          data: { version: { increment: 1 } },
-        });
-        await this.events.record(tx, {
-          actorId: actor.userId,
-          requestId: req.requestId,
-          projectId,
-          target: { targetType: 'REQUIREMENT', targetId: id },
-          action: 'requirement.revised',
-          details: {
-            code: this.snapshot(next).code,
-            title: data.title,
-            changeId: change.id,
-            fromRevision: row.acceptedRevision,
-            toRevision: next.revision,
-            scopeVersion: next.scopeVersion,
-            reason: data.reason,
-            impact: data.impact,
-            affectedTaskIds: tasks.map((task) => task.id),
-            ...effects,
-          },
-          ...(next.ownerId ? { recipientId: next.ownerId } : {}),
-          additionalRecipientIds: [
-            ...new Set(
-              tasks
-                .flatMap((task) => [task.assigneeId, task.helperId])
-                .filter((value): value is string => !!value),
-            ),
-          ],
-          title: `需求「${data.title}」已修订，请核对影响并等待重新评审`.slice(0, 200),
-        });
+            id,
+            { ...fields, reason: data.reason, impact: data.impact },
+            req,
+            { tx, actor },
+          );
         return { id };
       },
       async (tx) => {
-        await this.authorize(tx, actor, projectId, req, 'requirement:write', id);
+        await this.documents.context(tx, actor, projectId, id, req, true);
       },
     );
   }
@@ -702,6 +769,7 @@ export class RequirementsService {
         let snapshot = this.snapshot(row);
         if (action === 'submit' || action === 'approve') await this.complete(tx, row);
         if (action === 'submit') {
+          await this.documents.assertApplied(tx, row);
           reviewerId = submitRequirementSchema.parse(input).reviewerId;
           await this.eligible(tx, projectId, reviewerId, true);
           round++;
@@ -725,6 +793,7 @@ export class RequirementsService {
             value.owner?.id,
             value.iteration?.id,
             value.revision,
+            value.document?.id ?? null,
           ];
           if (
             action === 'approve' &&

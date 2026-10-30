@@ -24,7 +24,8 @@ import {
 } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  BrowserRouter,
+  createBrowserRouter,
+  RouterProvider,
   Link,
   Route,
   Routes,
@@ -50,6 +51,11 @@ import { loadProjects, recentProjectsKey } from '../modules/projects/api';
 import { ProjectSwitcher } from '../modules/projects/ProjectSwitcher';
 import { ProjectIcon } from '../modules/projects/presentation';
 
+const RequirementDocumentPage = lazy(() =>
+  import('../modules/requirements/RequirementDocumentPage').then((m) => ({
+    default: m.RequirementDocumentPage,
+  })),
+);
 const UsersPage = lazy(() =>
   import('../modules/identity/UsersPage').then((module) => ({ default: module.UsersPage })),
 );
@@ -64,6 +70,15 @@ const ProjectDetailPage = lazy(() =>
     default: module.ProjectDetailPage,
   })),
 );
+
+function DocumentRoute({ session }: { session: SessionResponse }) {
+  const { projectId, requirementId } = useParams();
+  const location = useLocation();
+  const version = new URLSearchParams(location.search).get('versionId') ?? 'current';
+  return (
+    <RequirementDocumentPage key={`${projectId}:${requirementId}:${version}`} session={session} />
+  );
+}
 
 function ProjectRoute({ session }: { session: SessionResponse }) {
   useLocale();
@@ -243,6 +258,10 @@ function Workspace({ session }: { session: SessionResponse }) {
             <Routes>
               <Route path="/" element={<OverviewPage session={session} />} />
               <Route path="/projects" element={<ProjectsPage session={session} />} />
+              <Route
+                path="/projects/:projectId/requirements/:requirementId/document"
+                element={<DocumentRoute session={session} />}
+              />
               <Route path="/projects/:projectId" element={<ProjectRoute session={session} />} />
               <Route
                 path="/settings/users"
@@ -325,6 +344,8 @@ function SessionGate() {
     <LoginPage />
   );
 }
+const router = createBrowserRouter([{ path: '*', element: <SessionGate /> }]);
+
 export function App() {
   const locale = useLocale();
   useEffect(() => {
@@ -362,9 +383,7 @@ export function App() {
       }}
     >
       <AntApp>
-        <BrowserRouter>
-          <SessionGate />
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </AntApp>
     </ConfigProvider>
   );

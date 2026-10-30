@@ -1,3 +1,5 @@
+import { RequirementDocumentPanel } from './RequirementDocumentPanel';
+import { DocumentVersionLink } from './DocumentView';
 import {
   taskStatusLabels,
   requirementStatusLabels,
@@ -236,6 +238,7 @@ function Detail({
               )}
             <PreparationNotice item={item} />
             <Tabs
+              className={styles.detailTabs}
               activeKey={detailTab}
               onChange={setDetailTab}
               items={[
@@ -251,6 +254,17 @@ function Detail({
                         {item.acceptanceCriteria || t('尚未填写验收标准')}
                       </p>
                     </>
+                  ),
+                },
+                {
+                  key: 'document',
+                  label: t('需求文档'),
+                  children: (
+                    <RequirementDocumentPanel
+                      projectId={project.id}
+                      requirementId={id}
+                      session={session}
+                    />
                   ),
                 },
                 {
@@ -359,8 +373,18 @@ function Detail({
                             </p>
                             <details>
                               <summary>{t('查看修订前后快照')}</summary>
+                              <DocumentVersionLink
+                                projectId={project.id}
+                                requirementId={id}
+                                document={change.before.document}
+                              />
                               <h4>{t('原验收标准')}</h4>
                               <p className={styles.content}>{change.before.acceptanceCriteria}</p>
+                              <DocumentVersionLink
+                                projectId={project.id}
+                                requirementId={id}
+                                document={change.after.document}
+                              />
                               <h4>{t('新验收标准')}</h4>
                               <p className={styles.content}>{change.after.acceptanceCriteria}</p>
                               <h4>{t('原需求描述')}</h4>
@@ -424,6 +448,11 @@ function Detail({
                                 {record.snapshot.owner?.name ?? t('未指定')} {t(' · 迭代：')}
                                 {record.snapshot.iteration?.name ?? t('未安排')}
                               </p>
+                              <DocumentVersionLink
+                                projectId={project.id}
+                                requirementId={id}
+                                document={record.snapshot.document}
+                              />
                               <h4>{t('需求描述')}</h4>
                               <p className={styles.content}>{record.snapshot.description}</p>
                               <h4>{t('验收标准')}</h4>

@@ -102,3 +102,8 @@
     display: none;
   }
 }
+
+/* Tabs manage overflow with transforms; native focus scrolling can move the click target. */
+.detailTabs:global(.ant-tabs) > :global(.ant-tabs-nav) :global(.ant-tabs-nav-wrap) {
+  overflow: clip;
+}
