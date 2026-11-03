@@ -1,3 +1,4 @@
+import { AiCaseGenerator } from './AiCaseGenerator';
 import { RequirementDocumentPanel } from './RequirementDocumentPanel';
 import { DocumentVersionLink } from './DocumentView';
 import {
@@ -104,6 +105,7 @@ function Detail({
   const [taskPage, setTaskPage] = useState(1);
   const [casePage, setCasePage] = useState(1);
   const [detailTab, setDetailTab] = useState('content');
+  const [aiOpen, setAiOpen] = useState(false);
   const [operation, setOperation] = useState<{ action: Action; item: Requirement } | null>(null);
   const [form] = Form.useForm();
   const { message } = App.useApp();
@@ -230,11 +232,24 @@ function Detail({
             ) &&
               !['ACCEPTING', 'COMPLETED', 'ARCHIVED'].includes(project.status) &&
               (session.user.isSystemAdmin || hasPermission(project.myRoles, 'case:write')) && (
-                <Link
-                  to={`/projects/${project.id}?${new URLSearchParams({ tab: 'test-cases', newCase: item.id, crequirement: item.id, ...(navigationParams.get('list') ? { list: navigationParams.get('list')! } : {}) })}`}
-                >
-                  <Button style={{ marginTop: 12 }}>{t('为此需求创建用例')}</Button>
-                </Link>
+                <Space wrap>
+                  <Link
+                    to={`/projects/${project.id}?${new URLSearchParams({ tab: 'test-cases', newCase: item.id, crequirement: item.id, ...(navigationParams.get('list') ? { list: navigationParams.get('list')! } : {}) })}`}
+                  >
+                    <Button style={{ marginTop: 12 }}>{t('为此需求创建用例')}</Button>
+                  </Link>
+                  <Button style={{ marginTop: 12 }} onClick={() => setAiOpen(true)}>
+                    {t('AI 生成测试用例')}
+                  </Button>
+                  {aiOpen && (
+                    <AiCaseGenerator
+                      project={project}
+                      item={item}
+                      session={session}
+                      onClose={() => setAiOpen(false)}
+                    />
+                  )}
+                </Space>
               )}
             <PreparationNotice item={item} />
             <Tabs

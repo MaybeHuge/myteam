@@ -18,6 +18,7 @@ import {
   FolderOpenOutlined,
   HomeOutlined,
   KeyOutlined,
+  SettingOutlined,
   LogoutOutlined,
   SearchOutlined,
   TeamOutlined,
@@ -55,6 +56,9 @@ const RequirementDocumentPage = lazy(() =>
   import('../modules/requirements/RequirementDocumentPage').then((m) => ({
     default: m.RequirementDocumentPage,
   })),
+);
+const AiSettingsPage = lazy(() =>
+  import('../modules/ai/AiSettingsPage').then((m) => ({ default: m.AiSettingsPage })),
 );
 const UsersPage = lazy(() =>
   import('../modules/identity/UsersPage').then((module) => ({ default: module.UsersPage })),
@@ -123,7 +127,10 @@ function Workspace({ session }: { session: SessionResponse }) {
     { path: '/', label: t('工作台'), icon: <HomeOutlined /> },
     { path: '/projects', label: t('项目空间'), icon: <FolderOpenOutlined /> },
     ...(session.user.isSystemAdmin
-      ? [{ path: '/settings/users', label: t('账号管理'), icon: <TeamOutlined /> }]
+      ? [
+          { path: '/settings/users', label: t('账号管理'), icon: <TeamOutlined /> },
+          { path: '/settings/ai', label: t('AI 平台设置'), icon: <SettingOutlined /> },
+        ]
       : []),
   ];
   return (
@@ -195,9 +202,11 @@ function Workspace({ session }: { session: SessionResponse }) {
               <strong>
                 {inProjects
                   ? t('项目空间')
-                  : location.pathname === '/settings/users'
-                    ? t('账号管理')
-                    : t('工作台')}
+                  : location.pathname === '/settings/ai'
+                    ? t('AI 平台设置')
+                    : location.pathname === '/settings/users'
+                      ? t('账号管理')
+                      : t('工作台')}
               </strong>
             </div>
             <ProjectSwitcher session={session} />
@@ -263,6 +272,21 @@ function Workspace({ session }: { session: SessionResponse }) {
                 element={<DocumentRoute session={session} />}
               />
               <Route path="/projects/:projectId" element={<ProjectRoute session={session} />} />
+              <Route
+                path="/settings/ai"
+                element={
+                  session.user.isSystemAdmin ? (
+                    <AiSettingsPage session={session} />
+                  ) : (
+                    <Alert
+                      type="warning"
+                      showIcon
+                      title={t('没有访问权限')}
+                      description={t('此页面仅向系统管理员开放。')}
+                    />
+                  )
+                }
+              />
               <Route
                 path="/settings/users"
                 element={

@@ -1,6 +1,7 @@
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import request from 'supertest';
 import * as argon2 from 'argon2';
 import {
@@ -179,6 +180,193 @@ after(async () => {
   await db.user.deleteMany({ where: { id: { in: Object.values(users).map((u) => u.id) } } });
   if (app) await app.close();
   await db.$disconnect();
+});
+test('AI 平台配置仅管理员可管理，加密保存并按所选平台调用', async () => {
+  const names = ['openai', 'deepseek', 'bailian'];
+  const existing = await db.aiProviderConfig.findMany({ where: { provider: { in: names } } });
+  const originalKey = process.env.AI_CONFIG_ENCRYPTION_KEY;
+  const originalFetch = globalThis.fetch;
+  process.env.AI_CONFIG_ENCRYPTION_KEY = 'ab'.repeat(32);
+  await db.aiProviderConfig.deleteMany({ where: { provider: { in: names } } });
+  try {
+    await sessions.tester.agent.get('/api/v1/settings/ai-providers').expect(403);
+    await post(sessions.tester, '/settings/ai-providers/openai', {}).expect(403);
+    const data = {
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'test-model',
+      apiKey: 'test-secret-openai',
+      enabled: true,
+      version: 0,
+    };
+    await post(sessions.admin, '/settings/ai-providers/openai', {
+      ...data,
+      baseUrl: 'https://evil.example/v1',
+    }).expect(400);
+    await post(sessions.admin, '/settings/ai-providers/openai', data).expect(201);
+    const saved = await db.aiProviderConfig.findUniqueOrThrow({ where: { provider: 'openai' } });
+    assert.ok(!saved.secret.includes(data.apiKey));
+    const listing = (await sessions.admin.agent.get('/api/v1/settings/ai-providers').expect(200))
+      .body;
+    assert.ok(!JSON.stringify(listing).includes(data.apiKey));
+    assert.equal(listing.find((p) => p.id === 'openai').hasKey, true);
+    await post(sessions.admin, '/settings/ai-providers/openai', data).expect(409);
+    await post(sessions.admin, '/settings/ai-providers/deepseek', {
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      apiKey: 'test-secret-deepseek',
+      enabled: true,
+      version: 0,
+    }).expect(201);
+    await sessions.viewer.agent.get(`/api/v1${route('ai-providers')}`).expect(403);
+    const options = (await sessions.tester.agent.get(`/api/v1${route('ai-providers')}`).expect(200))
+      .body;
+    assert.ok(options.some((p) => p.id === 'deepseek'));
+    assert.ok(!JSON.stringify(options).includes('test-secret'));
+    let captured;
+    globalThis.fetch = async (url, options) => {
+      captured = {
+        url: String(url),
+        authorization: options.headers.Authorization,
+        body: JSON.parse(options.body),
+      };
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  cases: [
+                    {
+                      title: '场景',
+                      basis: '依据',
+                      preconditions: '',
+                      steps: [{ action: '操作', expected: '结果' }],
+                    },
+                  ],
+                  questions: [],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    };
+    await post(sessions.tester, route(`ai-generate/${reqA}`), { provider: 'deepseek' }).expect(201);
+    assert.equal(captured.url, 'https://api.deepseek.com/v1/chat/completions');
+    assert.equal(captured.authorization, 'Bearer test-secret-deepseek');
+    assert.equal(captured.body.model, 'deepseek-chat');
+    assert.equal(captured.body.enable_thinking, undefined);
+    await post(sessions.admin, '/settings/ai-providers/deepseek', {
+      baseUrl: 'https://api.deepseek.com/v1',
+      model: 'deepseek-chat',
+      apiKey: '',
+      enabled: false,
+      version: 1,
+    }).expect(201);
+    await post(sessions.tester, route(`ai-generate/${reqA}`), { provider: 'deepseek' }).expect(422);
+    await post(sessions.tester, route(`ai-generate/${reqA}`), { provider: 'unknown' }).expect(422);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.AI_CONFIG_ENCRYPTION_KEY;
+    else process.env.AI_CONFIG_ENCRYPTION_KEY = originalKey;
+    await db.aiProviderConfig.deleteMany({ where: { provider: { in: names } } });
+    for (const row of existing) await db.aiProviderConfig.create({ data: row });
+  }
+});
+test('AI 生成受权限和需求状态保护，校验模型结果并由用户保存草稿', async () => {
+  let calls = 0,
+    invalid = false,
+    unauthorized = false,
+    received;
+  const server = createServer(async (req, res) => {
+    calls++;
+    let body = '';
+    for await (const chunk of req) body += chunk;
+    received = JSON.parse(body);
+    res.setHeader('Content-Type', 'application/json');
+    if (unauthorized) {
+      res.statusCode = 401;
+      res.end('{}');
+      return;
+    }
+    res.end(
+      JSON.stringify({
+        choices: [
+          {
+            message: {
+              content: invalid
+                ? '{}'
+                : JSON.stringify({
+                    cases: [
+                      {
+                        title: '有效验证码登录',
+                        basis: '有效且未使用验证码可登录',
+                        preconditions: '有有效验证码',
+                        steps: [{ action: '输入验证码', expected: '登录成功' }],
+                      },
+                    ],
+                    questions: ['验证码有效期是多少？'],
+                  }),
+            },
+          },
+        ],
+      }),
+    );
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const originalResolve = service.ai.resolve;
+  service.ai.resolve = async () => ({
+    apiKey: 'test-key',
+    model: 'test-model',
+    baseUrl: `http://127.0.0.1:${server.address().port}/v1`,
+    disableThinking: true,
+  });
+  try {
+    const path = route(`ai-generate/${reqA}`);
+    await post(sessions.viewer, path, { provider: 'bailian' }).expect(403);
+    await post(sessions.outsider, path, { provider: 'bailian' }).expect(404);
+    await post(sessions.tester, route(`ai-generate/${foreignReq}`), { provider: 'bailian' }).expect(
+      404,
+    );
+    assert.equal(calls, 0);
+    const result = (await post(sessions.tester, path, { provider: 'bailian' }).expect(201)).body;
+    assert.equal(calls, 1);
+    assert.equal(result.revision, 1);
+    assert.match(received.messages[1].content, /手机验证码只能使用一次/);
+    assert.equal(received.enable_thinking, false);
+    assert.equal(result.questions.length, 1);
+    await post(
+      sessions.tester,
+      route(),
+      input({ expectedRequirementRevision: result.revision + 1 }),
+    ).expect(409);
+    const generated = result.cases[0];
+    const created = (
+      await post(
+        sessions.tester,
+        route(),
+        input({
+          title: generated.title,
+          preconditions: generated.preconditions,
+          steps: generated.steps,
+          expectedRequirementRevision: result.revision,
+        }),
+      ).expect(201)
+    ).body;
+    assert.equal((await get(created.id)).status, 'DRAFT');
+    unauthorized = true;
+    const authError = await post(sessions.tester, path, { provider: 'bailian' }).expect(502);
+    assert.match(authError.body.message, /认证失败/);
+    unauthorized = false;
+    invalid = true;
+    await post(sessions.tester, path, { provider: 'bailian' }).expect(502);
+    service.ai.resolve = originalResolve;
+    await post(sessions.tester, path, { provider: 'unknown' }).expect(422);
+  } finally {
+    service.ai.resolve = originalResolve;
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 test('不完整草稿、多需求关联、负责人和步骤排序持久化，缺项不能送审', async () => {
   const id = await create({

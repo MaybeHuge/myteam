@@ -1,3 +1,6 @@
+import { z } from 'zod';
+import { generateCases } from './ai-cases.js';
+import { AiService } from '../ai/ai.service.js';
 import { refreshRequirementProgress } from '../../common/requirement-progress.js';
 import { Injectable } from '@nestjs/common';
 import type { Request } from 'express';
@@ -49,6 +52,7 @@ type Row = Prisma.TestCaseGetPayload<{ include: typeof include }>;
 export class TestCasesService {
   constructor(
     private readonly db: Database,
+    private readonly ai: AiService,
     private readonly commands: Commands,
     private readonly events: CollaborationEvents,
     private readonly validity: RequirementValidity,
@@ -343,6 +347,43 @@ export class TestCasesService {
       { isolationLevel: 'RepeatableRead' },
     );
   }
+  async aiProviders(projectId: string, req: Request) {
+    const actor = await this.identity.requireSession(req);
+    await this.db.$transaction(async (tx) => {
+      await this.authorize(tx, actor, projectId, req, 'case:write');
+    });
+    return this.ai.listAvailable();
+  }
+  async generateCases(projectId: string, requirementId: string, input: unknown, req: Request) {
+    const { provider } = z.object({ provider: z.string().min(1).max(32) }).parse(input);
+    const actor = await this.identity.requireWrite(req);
+    const requirement = await this.db.$transaction(async (tx) => {
+      await this.authorize(tx, actor, projectId, req, 'case:write');
+      const row = await tx.requirement.findFirst({
+        where: { id: requirementId, projectId },
+        include: { workItem: true },
+      });
+      if (!row) throw new ApiException(404, 'NOT_FOUND', '需求不存在或不属于当前项目');
+      if (
+        !['CONFIRMED', 'IMPLEMENTING', 'ACCEPTING', 'TESTING', 'COMPLETED'].includes(row.status) ||
+        row.acceptedRevision !== row.revision
+      )
+        throw new ApiException(422, 'BUSINESS_RULE_VIOLATION', '请先确认需求后再生成用例');
+      return {
+        title: row.workItem.title,
+        description: row.description,
+        acceptanceCriteria: row.acceptanceCriteria,
+        revision: row.revision,
+      };
+    });
+    const { revision, ...content } = requirement;
+    const generated = await generateCases(
+      content,
+      req.get('Accept-Language')?.startsWith('en') ? 'en-US' : 'zh-CN',
+      await this.ai.resolve(provider),
+    );
+    return { ...generated, revision };
+  }
   private async eligible(
     tx: Tx,
     projectId: string,
@@ -456,7 +497,9 @@ export class TestCasesService {
   }
   async create(projectId: string, input: unknown, req: Request) {
     const actor = await this.identity.requireWrite(req),
-      data = createTestCaseSchema.parse(input);
+      data = createTestCaseSchema
+        .extend({ expectedRequirementRevision: z.number().int().positive().optional() })
+        .parse(input);
     return this.commands.run(
       actor.userId,
       req.get('idempotency-key'),
@@ -464,11 +507,16 @@ export class TestCasesService {
       async (tx) => {
         if (data.ownerId) await this.eligible(tx, projectId, data.ownerId, 'case:write');
         const basis = await this.validity.capture(tx, projectId, data.requirementIds);
+        if (
+          data.expectedRequirementRevision !== undefined &&
+          (basis.length !== 1 || basis[0]?.revision !== data.expectedRequirementRevision)
+        )
+          throw new ApiException(409, 'CONFLICT', '需求已变更，请关闭后重新生成用例');
         const project = await tx.project.update({
           where: { id: projectId },
           data: { testCaseSequence: { increment: 1 } },
         });
-        const { requirementIds, ...fields } = data;
+        const { requirementIds, ...fields } = createTestCaseSchema.parse(data);
         const row = await tx.testCase.create({
           data: {
             ...fields,

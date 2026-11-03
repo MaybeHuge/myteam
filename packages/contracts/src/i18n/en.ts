@@ -1,5 +1,67 @@
 // Chinese source text is the stable key; user-authored content is never translated.
 export const english: Record<string, string> = {
+  阿里百炼: 'Alibaba Cloud Model Studio',
+  配置: 'Configure',
+  已启用: 'Enabled',
+  保存: 'Save',
+  关闭: 'Close',
+  'AI 平台认证失败，请检查 API Key、服务地址和模型权限':
+    'AI provider authentication failed. Check the API key, service URL and model access.',
+  'AI 平台设置': 'AI provider settings',
+  '配置团队可使用的 AI 平台和模型。密钥保存后不会再次显示。':
+    'Configure AI providers and models for your team. Saved keys will not be displayed again.',
+  '只有系统管理员可以管理平台。修改配置后立即生效。':
+    'Only system administrators can manage providers. Changes take effect immediately.',
+  'AI 平台配置已保存': 'AI provider settings saved.',
+  未启用: 'Disabled',
+  模型: 'Model',
+  已配置密钥: 'Key configured',
+  未配置密钥: 'Key not configured',
+  '配置 AI 平台': 'Configure AI provider',
+  服务地址: 'Service URL',
+  '留空则保留现有密钥；填写新值可替换。':
+    'Leave blank to keep the existing key, or enter a new one to replace it.',
+  '请输入平台 API Key。': 'Enter the provider API key.',
+  启用平台: 'Enable provider',
+  '选择 AI 平台': 'Select AI provider',
+  请选择可用平台: 'Select an available provider',
+  '暂无可用 AI 平台，请联系管理员配置': 'No AI providers available. Contact an administrator.',
+  '仅系统管理员可以管理 AI 平台': 'Only system administrators can manage AI providers.',
+  'AI 平台配置已变更，请刷新后重试': 'AI provider settings have changed. Refresh and try again.',
+  'AI 平台不可用，请重新选择': 'The AI provider is unavailable. Select another.',
+  'AI 服务地址无效': 'Invalid AI service URL.',
+  'AI 服务地址不属于所选平台': 'The service URL does not belong to the selected provider.',
+  '请配置 AI 密钥加密密钥': 'Configure the AI credential encryption key.',
+  '无法解密 AI 平台密钥，请检查加密配置':
+    'Cannot decrypt the AI provider key. Check the encryption configuration.',
+  '请填写 API Key': 'Enter an API key.',
+
+  '放弃未保存的候选用例？': 'Discard unsaved candidates?',
+  '关闭后未保存的候选内容将丢失。': 'Unsaved candidates will be lost when you close this window.',
+  放弃并关闭: 'Discard and close',
+  '保存结果未确认，请重试此用例；内容暂时锁定以避免重复创建。':
+    'The save result is unknown. Retry this case; its content is locked to prevent duplicates.',
+
+  'AI 生成测试用例': 'Generate test cases with AI',
+  '生成时会将需求标题、描述和验收标准发送给配置的 AI 服务。请检查结果，保存后仍需评审。':
+    'The requirement title, description and acceptance criteria will be sent to the configured AI service. Review the results; saved drafts still require review.',
+  开始生成: 'Generate',
+  保存所选草稿: 'Save selected drafts',
+  需求内容版本: 'Requirement revision',
+  需要确认的信息: 'Questions to resolve',
+  已保存: 'Saved',
+  选择此用例: 'Select this test case',
+  依据: 'Basis',
+  '需求已变更，请关闭后重新生成用例': 'The requirement has changed. Close and generate again.',
+  '请填写所选用例的标题、步骤和预期':
+    'Fill in the title, actions and expected results for selected cases.',
+  所选用例已保存为草稿: 'Selected test cases were saved as drafts.',
+  'AI 服务尚未配置，请联系管理员': 'The AI service is not configured. Contact an administrator.',
+  'AI 服务配置无效': 'The AI service configuration is invalid.',
+  'AI 生成失败或返回内容无效，请稍后重试':
+    'AI generation failed or returned invalid content. Try again later.',
+  请先确认需求后再生成用例: 'Confirm the requirement before generating test cases.',
+
   简体中文: 'Simplified Chinese',
   文档正文: 'Document body',
   '加载最新草稿？': 'Load the latest draft?',

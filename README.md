@@ -6,6 +6,14 @@
 
 技术基线：React 19 + TypeScript + Vite + Ant Design 6；NestJS 模块化单体后端；PostgreSQL + Prisma；Node.js 24 LTS；pnpm workspace。固定版本见 package.json 与 pnpm-lock.yaml；实际运行与限制见 [首批验证](docs/verification/m0-identity.md) 和 [项目与界面验证](docs/verification/m1-projects.md)。
 
+## AI 测试用例生成
+
+系统管理员可在「AI 平台设置」中配置阿里百炼、OpenAI 和 DeepSeek 的服务地址、模型和 API Key，启用后成员可在生成时选择平台。API Key 使用 AES-256-GCM 加密保存在数据库，不会返回给浏览器；更新时密钥留空表示保留原值。服务端 `.env` 的 `AI_CONFIG_ENCRYPTION_KEY` 必须为 32 字节随机值的 64 位十六进制表示，可用 `openssl rand -hex 32` 生成。**备份并保管该加密密钥**：丢失或更换后，已有平台密钥将无法解密，需要重新录入。各实例和备份恢复环境须使用同一密钥。
+
+百炼使用 JSON 模式并关闭思考模式；所选模型须支持 Chat Completions 和 JSON 输出。平台设置仅接受对应厂商的 HTTPS 地址，百炼支持官方域名及工作空间域名。
+
+拥有用例编写权限的成员可在已确认需求的详情点击「AI 生成测试用例」并选择平台。开始生成会将需求标题、描述和验收标准发送给配置的模型服务，需求富文本文档和附件不会发送。候选结果及待澄清问题仅在当前页面展示；可编辑、选择后逐条保存为关联需求的草稿，仍需人工送审。保存中断后，已保存项会标记，未保存项可以重试；关闭页面会丢弃未保存的候选内容。AI 可能遗漏或误解规则，请人工核对依据、步骤和预期。
+
 ## 本地启动
 
 以下命令在项目根目录执行。Linux x64 可使用项目级工具，无需切换全局 Node。

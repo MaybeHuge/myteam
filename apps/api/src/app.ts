@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { AiModule } from './modules/ai/ai.module.js';
 import { QualityModule } from './modules/quality/quality.module.js';
 import { TestCasesModule } from './modules/test-cases/test-cases.module.js';
 import { TasksModule } from './modules/tasks/tasks.module.js';
@@ -21,6 +22,7 @@ import { IterationsModule } from './modules/iterations/iterations.module.js';
 @Module({
   imports: [
     InfrastructureModule,
+    AiModule,
     IdentityModule,
     ProjectsModule,
     IterationsModule,

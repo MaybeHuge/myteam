@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Module, Param, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
+import { AiModule } from '../ai/ai.module.js';
 import { IdentityModule } from '../identity/identity.module.js';
 import { ProjectsModule } from '../projects/projects.module.js';
 import { TestCasesService } from './test-cases.service.js';
@@ -19,6 +20,17 @@ class TestCasesController {
   }
   @Post() create(@Param('projectId') project: string, @Body() input: unknown, @Req() req: Request) {
     return this.service.create(id(project), input, req);
+  }
+  @Get('ai-providers') providers(@Param('projectId') project: string, @Req() req: Request) {
+    return this.service.aiProviders(id(project), req);
+  }
+  @Post('ai-generate/:requirementId') generate(
+    @Param('projectId') project: string,
+    @Param('requirementId') requirement: string,
+    @Body() input: unknown,
+    @Req() req: Request,
+  ) {
+    return this.service.generateCases(id(project), id(requirement), input, req);
   }
   @Get(':id') detail(
     @Param('projectId') project: string,
@@ -60,7 +72,7 @@ class TestCasesController {
   }
 }
 @Module({
-  imports: [IdentityModule, ProjectsModule],
+  imports: [IdentityModule, ProjectsModule, AiModule],
   controllers: [TestCasesController],
   providers: [TestCasesService],
   exports: [TestCasesService],

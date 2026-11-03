@@ -963,3 +963,13 @@ model RequirementDocumentVersionImage {
   @@id([versionId, imageId])
   @@index([imageId])
 }
+
+model AiProviderConfig {
+  provider  String   @id @db.VarChar(32)
+  baseUrl   String   @db.VarChar(500)
+  model     String   @db.VarChar(200)
+  secret    String   @db.Text
+  enabled   Boolean  @default(true)
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
