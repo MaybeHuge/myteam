@@ -351,3 +351,72 @@ test('文档冲突保留本地输入；显式加载及放弃修改；未保存�
   await expect(body).toHaveCount(0);
   expect((await (await page.request.get(`/api/v1${path}`)).json()).hasPendingChanges).toBe(false);
 });
+
+test('需求文档：完整工具栏可操作并保存格式与表格', async ({ page }) => {
+  test.setTimeout(90000);
+  const { path, body } = await setup(page);
+  const toolbar = page.getByRole('toolbar', { name: '文档格式工具' });
+  for (const label of [
+    '下划线',
+    '删除线',
+    '行内代码',
+    '引用',
+    '代码块',
+    '分隔线',
+    '插入换行',
+    '增加列表缩进',
+    '减少列表缩进',
+    '移除链接',
+    '在上方增加行',
+    '增加行',
+    '删除行',
+    '在左侧增加列',
+    '增加列',
+    '删除列',
+    '合并单元格',
+    '拆分单元格',
+    '切换表头行',
+    '切换表头列',
+    '切换表头单元格',
+    '删除表格',
+    '图片说明',
+    '移除图片',
+  ]) {
+    await expect(toolbar.getByRole('button', { name: label, exact: true })).toBeVisible();
+  }
+  await expect(toolbar.getByRole('button', { name: '删除行', exact: true })).toBeDisabled();
+  await expect(toolbar.getByRole('button', { name: '图片说明', exact: true })).toBeDisabled();
+  await body.fill('重点内容');
+  await body.press('ControlOrMeta+a');
+  await toolbar.getByRole('button', { name: '下划线', exact: true }).click();
+  await toolbar.getByRole('button', { name: '删除线', exact: true }).click();
+  await expect(body.locator('u s, s u')).toContainText('重点内容');
+  await body.press('ArrowRight');
+  await body.press('Enter');
+  await toolbar.getByRole('button', { name: '引用', exact: true }).click();
+  await page.keyboard.type('引用说明');
+  await body.press('ControlOrMeta+End');
+  await body.press('Enter');
+  await body.press('Enter');
+  await toolbar.getByRole('button', { name: '插入表格', exact: true }).click();
+  await body.locator('th').first().click();
+  await expect(toolbar.getByRole('button', { name: '删除行', exact: true })).toBeEnabled();
+  await toolbar.getByRole('button', { name: '在上方增加行', exact: true }).click();
+  await expect(body.locator('table tr')).toHaveCount(4);
+  await toolbar.getByRole('button', { name: '删除行', exact: true }).click();
+  await expect(body.locator('table tr')).toHaveCount(3);
+  await expect(page.getByRole('status')).toHaveText('草稿已保存');
+  const doc = await (await page.request.get(`/api/v1${path}`)).json();
+  expect(JSON.stringify(doc.draft.content)).toContain('underline');
+  expect(JSON.stringify(doc.draft.content)).toContain('strike');
+  expect(JSON.stringify(doc.draft.content)).toContain('blockquote');
+  await page.reload();
+  await page.getByRole('button', { name: '继续编辑草稿', exact: true }).click();
+  await expect(body.locator('u s, s u')).toContainText('重点内容');
+  await expect(body.locator('blockquote')).toContainText('引用说明');
+  await expect(body.locator('table tr')).toHaveCount(3);
+  await apply(page);
+  await expect(page.locator('u s, s u')).toContainText('重点内容');
+  await expect(page.locator('blockquote')).toContainText('引用说明');
+  await expect(page.locator('table tr')).toHaveCount(3);
+});

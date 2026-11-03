@@ -113,9 +113,6 @@
   background: #e4f2ea;
 }
 .toolbar {
-  position: sticky;
-  top: 72px;
-  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -171,9 +168,6 @@
 @media (max-width: 760px) {
   .sheet {
     padding: 18px;
-  }
-  .toolbar {
-    position: static;
   }
   .header h1 {
     font-size: 21px;

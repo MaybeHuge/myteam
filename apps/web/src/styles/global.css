@@ -218,9 +218,38 @@ input {
   min-height: 620px;
   overflow-y: auto;
 }
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin: 0 4px 30px 12px;
+}
 .sidebar .brand {
-  margin: 0 12px 30px;
+  margin: 0;
   font-size: 25px;
+}
+.sidebar-toggle {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 7px;
+  color: #c4d8c9;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+}
+.sidebar-toggle:hover,
+.sidebar-toggle:focus-visible {
+  background: #28433a;
+  color: #fff;
+}
+.sidebar-toggle:focus-visible {
+  outline: 2px solid #c4d8c9;
+  outline-offset: 2px;
 }
 .workspace-identity {
   display: flex;
@@ -859,38 +888,14 @@ input {
     padding: 40px 25px 75px;
     min-height: 520px;
   }
-  .sidebar {
-    width: 68px;
-    min-height: 100vh;
+  .sidebar:not(.is-collapsed) {
+    position: fixed;
+    z-index: 30;
+    width: 200px;
     height: 100dvh;
-    padding: 26px 9px;
-  }
-  .sidebar .brand {
-    font-size: 0;
-    margin: 0 auto 39px;
-  }
-  .sidebar .brand-mark {
-    width: 32px;
-    height: 32px;
-    font-size: 23px;
-  }
-  .sidebar .brand-dot,
-  .workspace-identity,
-  .sidebar-label,
-  .sidebar-bottom,
-  .sidebar-recents,
-  .workspace-nav-link > span:not(.anticon),
-  .workspace-nav-link > small {
-    display: none;
-  }
-  .workspace-nav-link {
-    width: 48px;
-    height: 45px;
-    justify-content: center;
-    padding: 0;
-  }
-  .workspace-nav-link > .anticon {
-    font-size: 18px;
+    min-height: 0;
+    padding: 26px 12px;
+    box-shadow: 4px 0 20px #10251c33;
   }
   .workspace-main {
     padding: 26px 16px;
@@ -1131,4 +1136,41 @@ input {
   .login-form-panel {
     padding-top: 65px;
   }
+}
+
+.sidebar.is-collapsed {
+  width: 68px;
+  padding: 26px 9px;
+}
+.sidebar.is-collapsed .sidebar-header {
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 auto 24px;
+}
+.sidebar.is-collapsed .brand {
+  font-size: 0;
+  margin: 0;
+}
+.sidebar.is-collapsed .brand-mark {
+  width: 32px;
+  height: 32px;
+  font-size: 23px;
+}
+.sidebar.is-collapsed .brand-dot,
+.sidebar.is-collapsed .workspace-identity,
+.sidebar.is-collapsed .sidebar-label,
+.sidebar.is-collapsed .sidebar-bottom,
+.sidebar.is-collapsed .sidebar-recents,
+.sidebar.is-collapsed .workspace-nav-link > span:not(.anticon),
+.sidebar.is-collapsed .workspace-nav-link > small {
+  display: none;
+}
+.sidebar.is-collapsed .workspace-nav-link {
+  width: 48px;
+  height: 45px;
+  justify-content: center;
+  padding: 0;
+}
+.sidebar.is-collapsed .workspace-nav-link > .anticon {
+  font-size: 18px;
 }

@@ -17,6 +17,8 @@ import {
   ArrowRightOutlined,
   FolderOpenOutlined,
   HomeOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
   KeyOutlined,
   SettingOutlined,
   LogoutOutlined,
@@ -98,6 +100,24 @@ function Workspace({ session }: { session: SessionResponse }) {
   const { message } = AntApp.useApp();
   const searchRef = useRef<InputRef>(null);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      const saved = localStorage.getItem('myteam.sidebar.collapsed');
+      if (saved === 'true' || saved === 'false') return saved === 'true';
+    } catch {
+      // The menu remains usable when browser storage is unavailable.
+    }
+    return window.matchMedia('(max-width: 760px)').matches;
+  });
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    try {
+      localStorage.setItem('myteam.sidebar.collapsed', String(next));
+    } catch {
+      /* Keep the current session preference. */
+    }
+  };
   const recent = useQuery({
     queryKey: recentProjectsKey(session.user.id),
     queryFn: ({ signal }) => loadProjects('pageSize=3', signal),
@@ -135,10 +155,23 @@ function Workspace({ session }: { session: SessionResponse }) {
   ];
   return (
     <div className="workspace">
-      <aside className="sidebar">
-        <Link className="brand brand-light" to="/">
-          <span className="brand-mark">m</span>MyTeam<span className="brand-dot">.</span>
-        </Link>
+      <aside className={`sidebar${sidebarCollapsed ? ' is-collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <Link className="brand brand-light" to="/" aria-label="MyTeam">
+            <span className="brand-mark">m</span>MyTeam<span className="brand-dot">.</span>
+          </Link>
+          <Tooltip title={sidebarCollapsed ? t('展开侧边栏') : t('折叠侧边栏')}>
+            <button
+              type="button"
+              className="sidebar-toggle"
+              onClick={toggleSidebar}
+              aria-label={sidebarCollapsed ? t('展开侧边栏') : t('折叠侧边栏')}
+              aria-expanded={!sidebarCollapsed}
+            >
+              {sidebarCollapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </button>
+          </Tooltip>
+        </div>
         <div className="workspace-identity">
           <span className="workspace-identity-icon">
             <TeamOutlined />
@@ -152,7 +185,11 @@ function Workspace({ session }: { session: SessionResponse }) {
         <span className="sidebar-label">{t('工作空间')}</span>
         <nav className="workspace-nav" aria-label={t('主导航')}>
           {navigation.map((item) => (
-            <span key={item.path}>
+            <Tooltip
+              key={item.path}
+              title={sidebarCollapsed ? item.label : undefined}
+              placement="right"
+            >
               <Link
                 to={item.path}
                 className={
@@ -171,7 +208,7 @@ function Workspace({ session }: { session: SessionResponse }) {
                 <span>{item.label}</span>
                 {item.path === '/projects' && recentData && <small>{recentData.stats.total}</small>}
               </Link>
-            </span>
+            </Tooltip>
           ))}
         </nav>
         {!!recentData?.items.length && (

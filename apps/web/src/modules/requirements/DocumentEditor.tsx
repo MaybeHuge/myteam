@@ -24,6 +24,10 @@ import {
 import {
   BoldOutlined,
   ItalicOutlined,
+  UnderlineOutlined,
+  StrikethroughOutlined,
+  CodeOutlined,
+  DashOutlined,
   PictureOutlined,
   LinkOutlined,
   UnorderedListOutlined,
@@ -460,14 +464,21 @@ export default function DocumentEditor({
       },
     });
   if (!editor) return null;
-  const tool = (label: string, action: () => void, icon?: ReactNode, active = false) => (
+  const tool = (
+    label: string,
+    action: () => void,
+    icon?: ReactNode,
+    active?: boolean,
+    enabled = true,
+  ) => (
     <Tooltip key={label} title={label}>
       <Button
         aria-label={label}
         type={active ? 'primary' : 'default'}
         size="small"
         icon={icon}
-        disabled={applying}
+        disabled={applying || !enabled}
+        aria-pressed={active}
         onMouseDown={(e) => e.preventDefault()}
         onClick={action}
       >
@@ -632,6 +643,51 @@ export default function DocumentEditor({
           editor.isActive('italic'),
         )}
         {tool(
+          t('下划线'),
+          () => editor.chain().focus().toggleUnderline().run(),
+          <UnderlineOutlined />,
+          editor.isActive('underline'),
+        )}
+        {tool(
+          t('删除线'),
+          () => editor.chain().focus().toggleStrike().run(),
+          <StrikethroughOutlined />,
+          editor.isActive('strike'),
+        )}
+        {tool(
+          t('行内代码'),
+          () => editor.chain().focus().toggleCode().run(),
+          <CodeOutlined />,
+          editor.isActive('code'),
+        )}
+        {tool(t('清除文字格式'), () => editor.chain().focus().unsetAllMarks().run())}
+        {tool(
+          t('引用'),
+          () => editor.chain().focus().toggleBlockquote().run(),
+          undefined,
+          editor.isActive('blockquote'),
+        )}
+        {tool(
+          t('代码块'),
+          () => editor.chain().focus().toggleCodeBlock().run(),
+          undefined,
+          editor.isActive('codeBlock'),
+        )}
+        {tool(
+          t('分隔线'),
+          () => editor.chain().focus().setHorizontalRule().run(),
+          <DashOutlined />,
+          undefined,
+          editor.can().setHorizontalRule(),
+        )}
+        {tool(
+          t('插入换行'),
+          () => editor.chain().focus().setHardBreak().run(),
+          undefined,
+          undefined,
+          editor.can().setHardBreak(),
+        )}
+        {tool(
           t('无序列表'),
           () => editor.chain().focus().toggleBulletList().run(),
           <UnorderedListOutlined />,
@@ -644,51 +700,174 @@ export default function DocumentEditor({
           editor.isActive('orderedList'),
         )}
         {tool(
+          t('增加列表缩进'),
+          () => editor.chain().focus().sinkListItem('listItem').run(),
+          undefined,
+          undefined,
+          editor.can().sinkListItem('listItem'),
+        )}
+        {tool(
+          t('减少列表缩进'),
+          () => editor.chain().focus().liftListItem('listItem').run(),
+          undefined,
+          undefined,
+          editor.can().liftListItem('listItem'),
+        )}
+        {tool(
           t('插入链接'),
           () => setLink(String(editor.getAttributes('link').href ?? '')),
           <LinkOutlined />,
         )}
-        {tool(t('插入表格'), () =>
-          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+        {tool(
+          t('移除链接'),
+          () => editor.chain().focus().extendMarkRange('link').unsetLink().run(),
+          undefined,
+          undefined,
+          editor.isActive('link'),
         )}
-        {editor.isActive('table') && (
-          <>
-            {tool(t('增加行'), () => editor.chain().focus().addRowAfter().run())}
-            {tool(t('增加列'), () => editor.chain().focus().addColumnAfter().run())}
-            {tool(t('删除表格'), () => editor.chain().focus().deleteTable().run())}
-          </>
+        {tool(
+          t('插入表格'),
+          () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+          undefined,
+          undefined,
+          editor.can().insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+        )}
+        {tool(
+          t('在上方增加行'),
+          () => editor.chain().focus().addRowBefore().run(),
+          undefined,
+          undefined,
+          editor.can().addRowBefore(),
+        )}
+        {tool(
+          t('增加行'),
+          () => editor.chain().focus().addRowAfter().run(),
+          undefined,
+          undefined,
+          editor.can().addRowAfter(),
+        )}
+        {tool(
+          t('删除行'),
+          () => editor.chain().focus().deleteRow().run(),
+          undefined,
+          undefined,
+          editor.can().deleteRow(),
+        )}
+        {tool(
+          t('在左侧增加列'),
+          () => editor.chain().focus().addColumnBefore().run(),
+          undefined,
+          undefined,
+          editor.can().addColumnBefore(),
+        )}
+        {tool(
+          t('增加列'),
+          () => editor.chain().focus().addColumnAfter().run(),
+          undefined,
+          undefined,
+          editor.can().addColumnAfter(),
+        )}
+        {tool(
+          t('删除列'),
+          () => editor.chain().focus().deleteColumn().run(),
+          undefined,
+          undefined,
+          editor.can().deleteColumn(),
+        )}
+        {tool(
+          t('合并单元格'),
+          () => editor.chain().focus().mergeCells().run(),
+          undefined,
+          undefined,
+          editor.can().mergeCells(),
+        )}
+        {tool(
+          t('拆分单元格'),
+          () => editor.chain().focus().splitCell().run(),
+          undefined,
+          undefined,
+          editor.can().splitCell(),
+        )}
+        {tool(
+          t('切换表头行'),
+          () => editor.chain().focus().toggleHeaderRow().run(),
+          undefined,
+          undefined,
+          editor.can().toggleHeaderRow(),
+        )}
+        {tool(
+          t('切换表头列'),
+          () => editor.chain().focus().toggleHeaderColumn().run(),
+          undefined,
+          undefined,
+          editor.can().toggleHeaderColumn(),
+        )}
+        {tool(
+          t('切换表头单元格'),
+          () => editor.chain().focus().toggleHeaderCell().run(),
+          undefined,
+          undefined,
+          editor.can().toggleHeaderCell(),
+        )}
+        {tool(
+          t('删除表格'),
+          () => editor.chain().focus().deleteTable().run(),
+          undefined,
+          undefined,
+          editor.can().deleteTable(),
         )}
         {tool(t('插入图片'), () => input.current?.click(), <PictureOutlined />)}
         {tool(t('已上传图片'), () => {
           setImagePage(1);
           setShowImages(true);
         })}
-        {editor.isActive('image') && (
-          <>
-            {tool(t('图片说明'), () => setCaption(String(editor.getAttributes('image').alt ?? '')))}
-            <Select
-              aria-label={t('图片宽度')}
-              size="small"
-              value={editor.getAttributes('image').width ?? 0}
-              onChange={(width) =>
-                editor
-                  .chain()
-                  .focus()
-                  .updateAttributes('image', { width: width || null })
-                  .run()
-              }
-              options={[
-                { value: 0, label: t('自适应宽度') },
-                { value: 300, label: '300px' },
-                { value: 600, label: '600px' },
-                { value: 1000, label: '1000px' },
-              ]}
-            />
-            {tool(t('移除图片'), () => editor.chain().focus().deleteSelection().run())}
-          </>
+        {tool(
+          t('图片说明'),
+          () => setCaption(String(editor.getAttributes('image').alt ?? '')),
+          undefined,
+          undefined,
+          editor.isActive('image'),
         )}
-        {tool(t('撤销'), () => editor.chain().focus().undo().run(), <UndoOutlined />)}
-        {tool(t('重做'), () => editor.chain().focus().redo().run(), <RedoOutlined />)}
+        <Select
+          aria-label={t('图片宽度')}
+          size="small"
+          disabled={applying || !editor.isActive('image')}
+          value={editor.getAttributes('image').width ?? 0}
+          onChange={(width) =>
+            editor
+              .chain()
+              .focus()
+              .updateAttributes('image', { width: width || null })
+              .run()
+          }
+          options={[
+            { value: 0, label: t('自适应宽度') },
+            { value: 300, label: '300px' },
+            { value: 600, label: '600px' },
+            { value: 1000, label: '1000px' },
+          ]}
+        />
+        {tool(
+          t('移除图片'),
+          () => editor.chain().focus().deleteSelection().run(),
+          undefined,
+          undefined,
+          editor.isActive('image'),
+        )}
+        {tool(
+          t('撤销'),
+          () => editor.chain().focus().undo().run(),
+          <UndoOutlined />,
+          undefined,
+          editor.can().undo(),
+        )}
+        {tool(
+          t('重做'),
+          () => editor.chain().focus().redo().run(),
+          <RedoOutlined />,
+          undefined,
+          editor.can().redo(),
+        )}
       </div>
       <input
         ref={input}
