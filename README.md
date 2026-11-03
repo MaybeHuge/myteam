@@ -2,63 +2,21 @@
 
 覆盖需求、任务、测试用例、测试记录、缺陷和版本构建的研发协作平台。
 
-当前已实现账号会话、项目/成员、迭代、通用协作、需求评审修订、三状态任务看板、用例库及评审、测试记录、缺陷修复复测和版本构建。任务由开发维护待开始/进行中/完成，需求自动汇总为实现中、待测试、测试中或已完成。测试记录替代提测管理和测试执行，支持从用例发起、多次测试、截图附件、失败自动建缺陷及复测联动。现行规则见 [ADR-008](docs/adr/008-lightweight-testing-records.md)，本次验证见 [轻量测试验证](docs/verification/lightweight-testing.md)。版本支持发布前检查、人工发布登记、上线验证及回滚记录；不执行自动部署。
-
 技术基线：React 19 + TypeScript + Vite + Ant Design 6；NestJS 模块化单体后端；PostgreSQL + Prisma；Node.js 24 LTS；pnpm workspace。固定版本见 package.json 与 pnpm-lock.yaml；实际运行与限制见 [首批验证](docs/verification/m0-identity.md) 和 [项目与界面验证](docs/verification/m1-projects.md)。
 
-## AI 测试用例生成
+## 功能介绍
 
-系统管理员可在「AI 平台设置」中配置阿里百炼、OpenAI 和 DeepSeek 的服务地址、模型和 API Key，启用后成员可在生成时选择平台。API Key 使用 AES-256-GCM 加密保存在数据库，不会返回给浏览器；更新时密钥留空表示保留原值。服务端 `.env` 的 `AI_CONFIG_ENCRYPTION_KEY` 必须为 32 字节随机值的 64 位十六进制表示，可用 `openssl rand -hex 32` 生成。**备份并保管该加密密钥**：丢失或更换后，已有平台密钥将无法解密，需要重新录入。各实例和备份恢复环境须使用同一密钥。
+- **账号与项目协作**：管理账号、项目成员和角色，按项目隔离数据；提供工作台、评论、附件、站内通知及项目切换。
+- **迭代、需求和任务**：维护迭代计划，评审与修订需求，使用三状态任务看板跟踪分工和进度。需求状态根据任务和测试情况汇总。
+- **需求文档**：在线编辑富文本、表格和图片，自动保存工作草稿；应用后生成固定版本并纳入需求评审，保留历史。
+- **测试与缺陷**：管理测试用例及评审，为需求登记多次测试记录；失败可创建缺陷，并跟踪修复和复测。
+- **AI 辅助测试**：管理员可配置阿里百炼、OpenAI 和 DeepSeek；成员选择平台生成测试用例候选，检查后保存为待评审草稿。
+- **版本与发布**：登记版本和构建，检查需求及严重缺陷，记录发布、上线验证和回滚。发布功能用于人工登记，不执行部署。
+- **界面体验**：支持简体中文和英语、可折叠侧边栏及窄屏访问。
 
-百炼使用 JSON 模式并关闭思考模式；所选模型须支持 Chat Completions 和 JSON 输出。平台设置仅接受对应厂商的 HTTPS 地址，百炼支持官方域名及工作空间域名。
+当前任务和测试规则见 [ADR-008](docs/adr/008-lightweight-testing-records.md)，发布规则见 [ADR-009](docs/adr/009-simple-release.md)。
 
-拥有用例编写权限的成员可在已确认需求的详情点击「AI 生成测试用例」并选择平台。开始生成会将需求标题、描述和验收标准发送给配置的模型服务，需求富文本文档和附件不会发送。候选结果及待澄清问题仅在当前页面展示；可编辑、选择后逐条保存为关联需求的草稿，仍需人工送审。保存中断后，已保存项会标记，未保存项可以重试；关闭页面会丢弃未保存的候选内容。AI 可能遗漏或误解规则，请人工核对依据、步骤和预期。
-
-## 本地启动
-
-以下命令在项目根目录执行。Linux x64 可使用项目级工具，无需切换全局 Node。
-
-```sh
-./scripts/bootstrap.sh
-./scripts/pnpm.sh install --frozen-lockfile
-```
-
-首次启动时复制 `.env.example` 为 `.env`，填写 `ADMIN_EMAIL`、`ADMIN_NAME` 和至少 6 位的 `ADMIN_PASSWORD`，同时填写 `S3_ACCESS_KEY_ID`、至少 12 位的 `S3_SECRET_ACCESS_KEY` 及资源桶配置。已有 `.env` 不要覆盖；不要将实际凭据提交到仓库。
-
-准备 PostgreSQL 和兼容 S3 的资源存储。`.env.example` 使用本机 PostgreSQL 和 SeaweedFS 的示例地址；请根据实际环境修改连接和凭据。
-
-PostgreSQL 中准备业务库 `myteam` 和隔离测试库 `myteam_test`。测试连接优先使用 `TEST_DATABASE_URL`，未指定时复用 `DATABASE_URL` 的主机、端口和凭据，并给数据库名增加 `_test`。
-
-SeaweedFS 使用下面的启动方式；已有 `seaweedfs` 容器时无需重复创建，使用 `docker start seaweedfs`。请先在当前 shell 设置并导出与 `.env` 一致的 `S3_SECRET_ACCESS_KEY`：
-
-```sh
-docker run -d --name seaweedfs --restart unless-stopped \
-  -p 8333:8333 -v seaweedfs-data:/data \
-  -e AWS_ACCESS_KEY_ID=admin \
-  -e AWS_SECRET_ACCESS_KEY="${S3_SECRET_ACCESS_KEY}" \
-  -e S3_BUCKET=my-bucket chrislusf/seaweedfs:latest
-```
-
-已有 SeaweedFS 时，设置 `S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET` 和对应凭据，再用 `storage:init` 检查资源桶。容器内运行 API 时，应使用容器可访问的服务地址。
-
-```sh
-./scripts/pnpm.sh db:generate
-./scripts/pnpm.sh db:migrate
-./scripts/pnpm.sh storage:init
-./scripts/pnpm.sh build
-# 只在首次初始化新数据库时执行；已有同邮箱账号会拒绝覆盖
-./scripts/pnpm.sh admin:create
-./scripts/pnpm.sh dev
-```
-
-浏览器打开 [http://localhost:5173](http://localhost:5173)，通过 Vite 同源代理访问 API。后端默认监听 127.0.0.1:3000。使用域名、IP、端口映射或修改前端端口时，将 `.env` 的 `APP_ORIGIN` 设置为浏览器地址栏的应用来源（协议、主机及端口，不含路径），并重启 API；来源不一致时登录及其他写请求会被拒绝。也可将 `APP_ORIGIN` 设置为 `*`，允许任意 HTTP(S) 页面来源，适用于通过不同域名、IP 或映射端口访问同一前端；仍要求有效 Origin、CSRF 和会话。生产环境继续要求 Secure Cookie，通配模式只接受 HTTPS 来源。反向代理须保留浏览器原始 `Origin` 请求头。
-
-- 存活检查：`http://127.0.0.1:3000/api/v1/health/live`
-- 数据库与资源存储就绪：`http://127.0.0.1:3000/api/v1/health/ready`
-- OpenAPI：`http://127.0.0.1:3000/api/v1/openapi.json`
-- 停止前后端：终端 `Ctrl+C`；PostgreSQL 使用其自身管理方式停止，SeaweedFS 使用 `docker stop seaweedfs`，数据卷保留。
-
-## 当前可以做什么
+### 使用说明
 
 界面支持简体中文和英语，可在登录页及工作区顶部切换。默认中文，选择保存在当前浏览器，并同步到其他标签页；刷新后保留，切换时不重置当前表单。导航、业务页面、状态标签、表单提示、日期及接口错误随语言切换，项目名称、需求内容和评论等用户数据保持原文。实现约定见 [中英文支持](docs/adr/010-internationalization.md)。
 
@@ -80,6 +38,70 @@ docker run -d --name seaweedfs --restart unless-stopped \
 需求详情「需求文档」支持在线图文编辑，可创建空白文档或使用需求模板；支持标题、字号、文字颜色、列表、表格、链接，以及图片选择/粘贴/拖入、失败重试和放大查看。「已上传图片」可重新插入已有图片，找回未保留在正文的上传文件。编辑自动保存工作草稿，应用后生成固定版本并纳入需求评审/修订，历史图文保持可读。权限、存储及新增迁移说明见 [需求在线文档](docs/adr/011-requirement-documents.md)。更新已有环境后执行 `./scripts/pnpm.sh db:generate` 与 `./scripts/pnpm.sh db:migrate`。
 
 演示数据生成方式见下方「检查与测试」。
+
+## 部署与启动
+
+以下为本地或非生产环境的启动方式。生产部署、备份恢复和容量尚未完成验证；`infra/compose.yaml` 只提供 PostgreSQL 和 SeaweedFS，`infra/nginx.conf` 是入口参考配置，不包含完整应用容器和 TLS。
+
+### 准备环境与配置
+
+以下命令在项目根目录执行。Linux x64 可使用项目级工具，无需切换全局 Node。
+
+```sh
+./scripts/bootstrap.sh
+./scripts/pnpm.sh install --frozen-lockfile
+```
+
+首次启动且没有 `.env` 时复制配置文件：
+
+```sh
+test -e .env || cp .env.example .env
+```
+
+编辑 `.env`，填写 `ADMIN_EMAIL`、`ADMIN_NAME` 和至少 6 位的 `ADMIN_PASSWORD`，同时填写 `S3_ACCESS_KEY_ID`、至少 12 位的 `S3_SECRET_ACCESS_KEY` 及资源桶配置。已有 `.env` 不要覆盖；不要将实际凭据提交到仓库。要在页面配置 AI 平台，还需为 `AI_CONFIG_ENCRYPTION_KEY` 设置 32 字节随机密钥的十六进制值，可用 `openssl rand -hex 32` 生成；安全保管该密钥以便恢复已有 AI 配置。
+
+准备 PostgreSQL 和兼容 S3 的资源存储。`.env.example` 使用本机 PostgreSQL 和 SeaweedFS 的示例地址；请根据实际环境修改连接和凭据。
+
+PostgreSQL 中准备业务库 `myteam` 和隔离测试库 `myteam_test`。测试连接优先使用 `TEST_DATABASE_URL`，未指定时复用 `DATABASE_URL` 的主机、端口和凭据，并给数据库名增加 `_test`。
+
+SeaweedFS 使用下面的启动方式；已有 `seaweedfs` 容器时无需重复创建，使用 `docker start seaweedfs`。请先在当前 shell 设置并导出与 `.env` 一致的 `S3_SECRET_ACCESS_KEY`：
+
+```sh
+docker run -d --name seaweedfs --restart unless-stopped \
+  -p 8333:8333 -v seaweedfs-data:/data \
+  -e AWS_ACCESS_KEY_ID=admin \
+  -e AWS_SECRET_ACCESS_KEY="${S3_SECRET_ACCESS_KEY}" \
+  -e S3_BUCKET=my-bucket chrislusf/seaweedfs:latest
+```
+
+已有 SeaweedFS 时，设置 `S3_ENDPOINT`、`S3_REGION`、`S3_BUCKET` 和对应凭据，再用 `storage:init` 检查资源桶。容器内运行 API 时，应使用容器可访问的服务地址。
+
+### 初始化并启动应用
+
+```sh
+./scripts/pnpm.sh db:generate
+./scripts/pnpm.sh db:migrate
+./scripts/pnpm.sh storage:init
+./scripts/pnpm.sh build
+# 只在首次初始化新数据库时执行；已有同邮箱账号会拒绝覆盖
+./scripts/pnpm.sh admin:create
+./scripts/pnpm.sh dev
+```
+
+浏览器打开 [http://localhost:5173](http://localhost:5173)，通过 Vite 同源代理访问 API。后端默认监听 127.0.0.1:3000。使用域名、IP、端口映射或修改前端端口时，将 `.env` 的 `APP_ORIGIN` 设置为浏览器地址栏的应用来源（协议、主机及端口，不含路径），并重启 API；来源不一致时登录及其他写请求会被拒绝。也可将 `APP_ORIGIN` 设置为 `*`，允许任意 HTTP(S) 页面来源，适用于通过不同域名、IP 或映射端口访问同一前端；仍要求有效 Origin、CSRF 和会话。生产环境继续要求 Secure Cookie，通配模式只接受 HTTPS 来源。反向代理须保留浏览器原始 `Origin` 请求头。
+
+- 存活检查：`http://127.0.0.1:3000/api/v1/health/live`
+- 数据库与资源存储就绪：`http://127.0.0.1:3000/api/v1/health/ready`
+- OpenAPI：`http://127.0.0.1:3000/api/v1/openapi.json`
+- 停止前后端：终端 `Ctrl+C`；PostgreSQL 使用其自身管理方式停止，SeaweedFS 使用 `docker stop seaweedfs`，数据卷保留。
+
+### 配置 AI 平台
+
+系统管理员可在「AI 平台设置」中配置阿里百炼、OpenAI 和 DeepSeek 的服务地址、模型和 API Key，启用后成员可在生成时选择平台。API Key 使用 AES-256-GCM 加密保存在数据库，不会返回给浏览器；更新时密钥留空表示保留原值。服务端 `.env` 的 `AI_CONFIG_ENCRYPTION_KEY` 必须为 32 字节随机值的 64 位十六进制表示，可用 `openssl rand -hex 32` 生成。**备份并保管该加密密钥**：丢失或更换后，已有平台密钥将无法解密，需要重新录入。各实例和备份恢复环境须使用同一密钥。
+
+百炼使用 JSON 模式并关闭思考模式；所选模型须支持 Chat Completions 和 JSON 输出。平台设置仅接受对应厂商的 HTTPS 地址，百炼支持官方域名及工作空间域名。
+
+拥有用例编写权限的成员可在已确认需求的详情点击「AI 生成测试用例」并选择平台。开始生成会将需求标题、描述和验收标准发送给配置的模型服务，需求富文本文档和附件不会发送。候选结果及待澄清问题仅在当前页面展示；可编辑、选择后逐条保存为关联需求的草稿，仍需人工送审。保存中断后，已保存项会标记，未保存项可以重试；关闭页面会丢弃未保存的候选内容。AI 可能遗漏或误解规则，请人工核对依据、步骤和预期。
 
 ## 检查与测试
 
