@@ -1,3 +1,4 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useBlocker } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -233,7 +234,7 @@ export default function DocumentEditor({
     if (!attempt.current && saved.current === fingerprint) return Promise.resolve(true);
     if (!attempt.current)
       attempt.current = {
-        key: crypto.randomUUID(),
+        key: randomUUID(),
         content: bodyRef.current,
         version: versionRef.current,
         fingerprint,
@@ -379,10 +380,10 @@ export default function DocumentEditor({
       if (position !== undefined) editor.commands.setTextSelection(position);
       for (const file of accepted) {
         const item: Upload = {
-          id: crypto.randomUUID(),
+          id: randomUUID(),
           file,
           url: URL.createObjectURL(file),
-          key: crypto.randomUUID(),
+          key: randomUUID(),
           status: 'uploading',
         };
         uploadMap.current.set(item.id, item);
@@ -439,7 +440,7 @@ export default function DocumentEditor({
         if (latest.draft.baseRevision !== latest.requirement.revision)
           await request(`${base}/reset`, {
             method: 'POST',
-            headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
+            headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': randomUUID() },
             body: JSON.stringify({ version: latest.draft.version }),
           });
         await onReload();
@@ -454,7 +455,7 @@ export default function DocumentEditor({
       onOk: async () => {
         await request(`${base}/reset`, {
           method: 'POST',
-          headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
+          headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': randomUUID() },
           body: JSON.stringify({ version: versionRef.current }),
         });
         saved.current = documentFingerprint(bodyRef.current);

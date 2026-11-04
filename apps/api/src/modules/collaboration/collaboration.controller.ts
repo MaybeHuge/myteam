@@ -20,6 +20,9 @@ export class CollaborationController {
   @Get('attachments') attachments(@Param() p: Record<string, string>, @Req() req: Request) {
     return this.service.list(uuid(p.projectId!), p, req, true);
   }
+  @Post('attachments/:id/delete') remove(@Param() p: Record<string, string>, @Req() req: Request) {
+    return this.service.removeAttachment(uuid(p.projectId!), p, uuid(p.id!), req);
+  }
   @Post('attachments') upload(@Param() p: Record<string, string>, @Req() req: Request) {
     return this.service.upload(uuid(p.projectId!), p, req);
   }

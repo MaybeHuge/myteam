@@ -1,3 +1,4 @@
+import detailStyles from '../../components/detail.module.css';
 import { testCaseStatusLabels, requirementPriorityLabels } from '../../i18n/labels';
 import { t, localizeLabels, useLocale } from '../../i18n';
 import {
@@ -230,7 +231,13 @@ function Detail({
           onCreated={(id) => navigate(`/projects/${project.id}?tab=records&record=${id}`)}
         />
       )}
-      <Drawer open size="min(780px, 100vw)" title={t('用例详情')} onClose={onClose}>
+      <Drawer
+        className={detailStyles.detail}
+        open
+        size="min(780px, 100vw)"
+        title={t('用例详情')}
+        onClose={onClose}
+      >
         {detail.isPending ? (
           <Skeleton active />
         ) : detail.isError || !item ? (
@@ -626,7 +633,7 @@ export function ProjectTestCases({
           loading={list.isPending}
           dataSource={list.data?.items ?? []}
           pagination={false}
-          scroll={{ x: 750 }}
+          scroll={{ x: 850 }}
           locale={{
             emptyText: (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无符合条件的用例')} />
@@ -672,7 +679,7 @@ export function ProjectTestCases({
             {
               title: t('负责人'),
               key: 'owner',
-              width: 100,
+              width: 160,
               render: (_, item) => item.owner?.name ?? t('未指定'),
             },
             {

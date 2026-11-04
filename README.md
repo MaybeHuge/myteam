@@ -88,7 +88,7 @@ docker run -d --name seaweedfs --restart unless-stopped \
 ./scripts/pnpm.sh dev
 ```
 
-浏览器打开 [http://localhost:5173](http://localhost:5173)，通过 Vite 同源代理访问 API。后端默认监听 127.0.0.1:3000。使用域名、IP、端口映射或修改前端端口时，将 `.env` 的 `APP_ORIGIN` 设置为浏览器地址栏的应用来源（协议、主机及端口，不含路径），并重启 API；来源不一致时登录及其他写请求会被拒绝。也可将 `APP_ORIGIN` 设置为 `*`，允许任意 HTTP(S) 页面来源，适用于通过不同域名、IP 或映射端口访问同一前端；仍要求有效 Origin、CSRF 和会话。生产环境继续要求 Secure Cookie，通配模式只接受 HTTPS 来源。反向代理须保留浏览器原始 `Origin` 请求头。
+浏览器打开 [http://localhost:5173](http://localhost:5173)，局域网设备可使用 `http://本机局域网IP:5173`。开发前端监听 `0.0.0.0:5173`，通过 Vite 同源代理访问 API；如需 API 也监听局域网，在 `.env` 中设置 `API_HOST=0.0.0.0`，未设置时默认监听 `127.0.0.1:3000`。使用域名、IP、端口映射或修改前端端口时，将 `.env` 的 `APP_ORIGIN` 设置为浏览器地址栏的应用来源（协议、主机及端口，不含路径），并重启 API；来源不一致时登录及其他写请求会被拒绝。也可将 `APP_ORIGIN` 设置为 `*`，允许任意 HTTP(S) 页面来源，适用于通过不同域名、IP 或映射端口访问同一前端；仍要求有效 Origin、CSRF 和会话。生产环境继续要求 Secure Cookie，通配模式只接受 HTTPS 来源。反向代理须保留浏览器原始 `Origin` 请求头。
 
 - 存活检查：`http://127.0.0.1:3000/api/v1/health/live`
 - 数据库与资源存储就绪：`http://127.0.0.1:3000/api/v1/health/ready`

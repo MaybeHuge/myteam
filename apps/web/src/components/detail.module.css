@@ -1,0 +1,56 @@
+/* Shared visual hierarchy for read-only detail views. */
+.detail :global(.ant-drawer-body) > h2 {
+  font-size: 20px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.detail dl {
+  gap: 10px;
+}
+.detail dl > div {
+  min-width: 0;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid #e1e8df;
+  border-radius: 8px;
+}
+.detail dl dt {
+  margin-bottom: 6px;
+  color: #687666;
+  font-size: 12px;
+  font-weight: 600;
+}
+.detail dl dd {
+  margin: 0;
+  color: #26372b;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.detail :global(.ant-tabs-tabpane) > h3 {
+  margin: 24px 0 10px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e8df;
+  color: #26372b;
+  font-size: 16px;
+  font-weight: 650;
+}
+.detail :global(.ant-tabs-tabpane) > h3:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.detail :global(.ant-tabs-tabpane) > p {
+  color: #485649;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.detail section h4 {
+  color: #536550;
+  font-size: 13px;
+  font-weight: 650;
+}
+.detail section h4:not(:first-child) {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e1e8df;
+}

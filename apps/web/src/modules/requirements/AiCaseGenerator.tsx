@@ -1,3 +1,4 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, App, Button, Checkbox, Input, Modal, Select, Space } from 'antd';
@@ -74,7 +75,7 @@ export function AiCaseGenerator({
           selected: true,
           saved: false,
           locked: false,
-          key: crypto.randomUUID(),
+          key: randomUUID(),
         })),
       );
     } catch (e) {

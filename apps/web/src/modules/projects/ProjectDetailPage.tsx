@@ -80,6 +80,8 @@ function Activity({ project, session }: { project: Project; session: SessionResp
         return t('重置了需求文档草稿');
       case 'requirement.document.image':
         return t('上传了文档图片 {{0}}', { '0': String(item.details?.filename ?? '') });
+      case 'attachment.deleted':
+        return t('删除了附件 {{0}}', { '0': String(item.details?.filename ?? '') });
       case 'attachment.uploaded':
         return t('上传了附件 {{0}}', { '0': String(item.details?.filename ?? '') });
       case 'iteration.created':

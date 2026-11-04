@@ -1,3 +1,4 @@
+import detailStyles from '../../components/detail.module.css';
 import { qualityLabels } from '../../i18n/labels';
 import { t, localizeLabels, useLocale } from '../../i18n';
 import { useState } from 'react';
@@ -143,6 +144,7 @@ function Detail({
   return (
     <>
       <Drawer
+        className={detailStyles.detail}
         open
         size="min(800px, 100vw)"
         title={mode === 'releases' ? t('版本详情') : t('缺陷详情')}

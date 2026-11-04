@@ -254,6 +254,34 @@ test('拒绝伪装内容、非法类型/编码/路径、空文件与超过 20 Mi
   assert.equal((await chunked.json()).code, 'VALIDATION_ERROR');
   assert.equal((await objects()).length, 1);
 });
+test('附件删除校验权限和对象，记录审计并支持幂等重试', async () => {
+  const id = (await upload(sessions.developer, 'delete.txt', Buffer.from('delete')).expect(201))
+    .body.id;
+  const path = `${base()}/attachments/${id}/delete`;
+  await post(sessions.viewer, path, {}).expect(403);
+  await post(sessions.outsider, path, {}).expect(404);
+  await post(
+    sessions.owner,
+    `${base(a, 'ITERATION', iteration)}/attachments/${id}/delete`,
+    {},
+  ).expect(404);
+  assert.equal((await download(sessions.viewer, id).expect(200)).text, 'delete');
+  const key = randomUUID();
+  await post(sessions.developer, path, {}, key).expect(201);
+  await post(sessions.developer, path, {}, key).expect(201);
+  await download(sessions.viewer, id).expect(404);
+  assert.equal(await db.attachment.count({ where: { id } }), 0);
+  assert.equal(
+    await db.activityLog.count({
+      where: {
+        projectId: a,
+        action: 'attachment.deleted',
+        details: { path: ['attachmentId'], equals: id },
+      },
+    }),
+    1,
+  );
+});
 test('图片预览沿用附件授权，并拒绝预览其他格式', async () => {
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7ioAAAAASUVORK5CYII=',

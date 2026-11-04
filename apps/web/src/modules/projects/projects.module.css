@@ -12,7 +12,7 @@
   margin-bottom: 30px;
 }
 .pageIntro h1 {
-  font-size: 31px;
+  font-size: 24px;
   letter-spacing: -0.9px;
   font-weight: 650;
   line-height: 1.4;
@@ -188,9 +188,9 @@
   border: 1px solid #e3eae5;
   border-radius: 12px;
   background: #fff;
-  padding: 23px 22px 0;
+  padding: 14px 18px 0;
   min-width: 0;
-  min-height: 240px;
+  min-height: 190px;
   transition:
     box-shadow 0.2s,
     transform 0.2s,
@@ -205,7 +205,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
   gap: 10px;
 }
 .cardTopActions {
@@ -291,7 +291,7 @@
   justify-content: space-between;
   align-items: center;
   color: #263e35;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 650;
   line-height: 1.55;
   text-decoration: none;
@@ -310,7 +310,7 @@
   transform: translateX(0);
 }
 .cardDescription {
-  margin: 9px 0 20px;
+  margin: 8px 0 12px;
   font-size: 12px;
   color: #636d66;
   line-height: 1.9;
@@ -327,7 +327,7 @@
   font-size: 11px;
   color: #69726d;
   margin-top: auto;
-  margin-bottom: 19px;
+  margin-bottom: 12px;
 }
 .cardMetadata > span:last-child {
   display: flex;
@@ -350,7 +350,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 15px 0;
+  padding: 10px 0;
 }
 .personAvatar {
   display: inline-flex;
@@ -600,7 +600,7 @@
   min-width: 0;
 }
 .detailIdentity h1 {
-  font-size: 27px;
+  font-size: 23px;
   font-weight: 650;
   letter-spacing: -0.5px;
   margin: 8px 0 11px;
@@ -747,15 +747,23 @@
   gap: 20px;
   align-items: center;
   min-height: 43px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5ebe2;
+}
+.projectFacts > div:last-child {
+  border-bottom: 0;
 }
 .projectFacts dt {
-  color: #666f62;
-  font-size: 11px;
+  color: #687666;
+  font-size: 12px;
+  font-weight: 600;
 }
 .projectFacts dd {
   margin: 0;
-  color: #5d6e51;
-  font-size: 11px;
+  color: #26372b;
+  font-size: 13px;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 .teamPreview {
   display: flex;
@@ -827,7 +835,7 @@
 .activityList {
   display: flex;
   flex-direction: column;
-  gap: 23px;
+  gap: 10px;
 }
 .activityItem {
   display: flex;
@@ -972,6 +980,9 @@
   background: #faf5e4;
   border-color: #efe6c4;
 }
+.memberAction:global(.ant-btn) {
+  font-size: 12px;
+}
 .primaryOwnerLabel {
   color: #6f6953;
   font-size: 11px;
@@ -1079,7 +1090,7 @@
     gap: 10px;
   }
   .pageIntro h1 {
-    font-size: 25px;
+    font-size: 21px;
   }
   .pageIntro p {
     font-size: 11px;
@@ -1150,7 +1161,7 @@
     gap: 14px;
   }
   .detailIdentity h1 {
-    font-size: 22px;
+    font-size: 20px;
   }
   .detailIdentity .large {
     width: 53px;

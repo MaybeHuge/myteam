@@ -118,6 +118,14 @@ test('跨角色协作：纯文本评论、附件上传下载、通知已读与�
     fullPage: true,
     animations: 'disabled',
   });
+  await expect(viewer.getByRole('button', { name: `删除 ${filename}`, exact: true })).toHaveCount(
+    0,
+  );
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.getByRole('button', { name: `删除 ${filename}`, exact: true }).click();
+  await page.getByRole('tooltip').getByRole('button', { name: /删\s*除/ }).click();
+  await expect(page.getByText(filename, { exact: true })).toHaveCount(0);
+
   await viewerContext.close();
   await adminContext.close();
   expect(errors).toEqual([]);

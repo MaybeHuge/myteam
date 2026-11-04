@@ -74,7 +74,7 @@ input {
   color: #82cabb;
 }
 .story-copy h1 {
-  font-size: clamp(32px, 3.5vw, 54px);
+  font-size: clamp(28px, 3vw, 40px);
   font-weight: 650;
   line-height: 1.45;
   letter-spacing: -1.5px;
@@ -161,7 +161,7 @@ input {
   margin-bottom: 14px;
 }
 .login-form-wrap h2.ant-typography {
-  font-size: 30px;
+  font-size: 26px;
   margin: 0 0 10px;
   color: #20323b;
 }
@@ -534,7 +534,7 @@ input {
   font-weight: 600;
 }
 .welcome-copy h2 {
-  font-size: 25px;
+  font-size: 22px;
   color: #49633c;
   letter-spacing: -0.5px;
   line-height: 1.5;
@@ -801,7 +801,7 @@ input {
   margin-bottom: 28px;
 }
 .page-heading h1 {
-  font-size: 29px;
+  font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.7px;
   margin: 9px 0 10px;
@@ -980,7 +980,7 @@ input {
     gap: 18px;
   }
   .page-heading h1 {
-    font-size: 24px;
+    font-size: 21px;
   }
   .page-heading {
     align-items: flex-start;
@@ -1173,4 +1173,9 @@ input {
 }
 .sidebar.is-collapsed .workspace-nav-link > .anticon {
   font-size: 18px;
+}
+
+/* Compact data tables without changing the rest of the interface. */
+.ant-table-wrapper .ant-table {
+  font-size: 13px;
 }

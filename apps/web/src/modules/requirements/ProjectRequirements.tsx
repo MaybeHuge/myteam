@@ -1,3 +1,4 @@
+import detailStyles from '../../components/detail.module.css';
 import { AiCaseGenerator } from './AiCaseGenerator';
 import { RequirementDocumentPanel } from './RequirementDocumentPanel';
 import { DocumentVersionLink } from './DocumentView';
@@ -133,7 +134,13 @@ function Detail({
     (action === 'approve' && operation?.item.reviewer?.id !== session.user.id);
   return (
     <>
-      <Drawer open size="min(760px, 100vw)" title={t('需求详情')} onClose={onClose}>
+      <Drawer
+        className={detailStyles.detail}
+        open
+        size="min(760px, 100vw)"
+        title={t('需求详情')}
+        onClose={onClose}
+      >
         {detail.isPending ? (
           <Skeleton active />
         ) : detail.isError || !item ? (
@@ -770,7 +777,7 @@ export function ProjectRequirements({
             {
               title: t('负责人'),
               key: 'owner',
-              width: 120,
+              width: 160,
               render: (_, item) => item.owner?.name ?? t('未指定'),
             },
             {

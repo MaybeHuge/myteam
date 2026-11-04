@@ -1,3 +1,4 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -52,7 +53,7 @@ export function useProjectCommand<T>(session: SessionResponse, onSuccess?: (resu
     gcTime: 0,
     mutationFn: ({ path, input }: { path: string; input: unknown }) => {
       const body = JSON.stringify({ path, input });
-      if (previous.current?.body !== body) previous.current = { body, key: crypto.randomUUID() };
+      if (previous.current?.body !== body) previous.current = { body, key: randomUUID() };
       return request<T>(path, {
         method: 'POST',
         headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': previous.current.key },

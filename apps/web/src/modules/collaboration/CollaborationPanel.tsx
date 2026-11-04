@@ -1,10 +1,24 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { t, useLocale, getLocale } from '../../i18n';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, App, Avatar, Button, Empty, Input, Pagination, Skeleton, Tabs, Upload } from 'antd';
+import {
+  Alert,
+  App,
+  Avatar,
+  Button,
+  Empty,
+  Input,
+  Pagination,
+  Popconfirm,
+  Skeleton,
+  Tabs,
+  Upload,
+} from 'antd';
 import {
   CommentOutlined,
   DownloadOutlined,
+  DeleteOutlined,
   PaperClipOutlined,
   SendOutlined,
   UploadOutlined,
@@ -54,10 +68,15 @@ export function CollaborationPanel({
     comment.reset();
     void message.success(t('评论已发布'));
   });
+  const remove = useProjectCommand(session, () => {
+    setFilePage(1);
+    remove.reset();
+    void message.success(t('附件已删除'));
+  });
   const uploadKey = useRef<{ file: File; key: string } | null>(null);
   const upload = useMutation({
     mutationFn: async (file: File) => {
-      if (uploadKey.current?.file !== file) uploadKey.current = { file, key: crypto.randomUUID() };
+      if (uploadKey.current?.file !== file) uploadKey.current = { file, key: randomUUID() };
       return request(`${base}/attachments?filename=${encodeURIComponent(file.name)}`, {
         method: 'POST',
         body: file,
@@ -228,6 +247,7 @@ export function CollaborationPanel({
                           }}
                         >
                           <Button
+                            size="small"
                             aria-label={t('上传附件')}
                             icon={<UploadOutlined aria-hidden />}
                             loading={upload.isPending}
@@ -251,6 +271,9 @@ export function CollaborationPanel({
                         }
                       />
                     )}
+                    {remove.isError && (
+                      <Alert showIcon type="error" title={errorMessage(remove.error)} />
+                    )}
                     {!files.data.items.length ? (
                       <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -269,12 +292,38 @@ export function CollaborationPanel({
                               </small>
                             </div>
                             <Button
+                              size="small"
                               aria-label={t('下载 {{0}}', { '0': file.filename })}
                               icon={<DownloadOutlined />}
                               href={`/api/v1/projects/${projectId}/attachments/${file.id}/download`}
                             >
                               {t('下载')}
                             </Button>
+                            {files.data.canWrite && (
+                              <Popconfirm
+                                title={t('确定删除此附件？')}
+                                onConfirm={() =>
+                                  remove.mutate({
+                                    path: `${base}/attachments/${file.id}/delete`,
+                                    input: {},
+                                  })
+                                }
+                                okText={t('删除')}
+                                cancelText={t('取消')}
+                              >
+                                <Button
+                                  danger
+                                  size="small"
+                                  aria-label={t('删除 {{0}}', { '0': file.filename })}
+                                  icon={<DeleteOutlined />}
+                                  loading={
+                                    remove.isPending && remove.variables?.path.includes(file.id)
+                                  }
+                                >
+                                  {t('删除')}
+                                </Button>
+                              </Popconfirm>
+                            )}
                           </article>
                         ))}
                       </div>

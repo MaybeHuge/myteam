@@ -1,3 +1,4 @@
+import detailStyles from '../../components/detail.module.css';
 import { taskStatusLabels, taskPriorityLabels } from '../../i18n/labels';
 import { t, localizeLabels, useLocale } from '../../i18n';
 import { useState } from 'react';
@@ -117,7 +118,13 @@ function Detail({
   const task = query.data;
   return (
     <>
-      <Drawer open size="min(760px, 100vw)" title={t('任务详情')} onClose={onClose}>
+      <Drawer
+        className={detailStyles.detail}
+        open
+        size="min(760px, 100vw)"
+        title={t('任务详情')}
+        onClose={onClose}
+      >
         {query.isPending ? (
           <Skeleton active />
         ) : query.isError || !task ? (
@@ -531,7 +538,7 @@ export function ProjectTasks({ project, session }: { project: Project; session: 
           loading={list.isPending}
           dataSource={list.data?.items ?? []}
           pagination={false}
-          scroll={{ x: 900 }}
+          scroll={{ x: 980 }}
           locale={{
             emptyText: (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('暂无符合条件的任务')} />
@@ -567,7 +574,7 @@ export function ProjectTasks({ project, session }: { project: Project; session: 
             {
               title: t('负责人'),
               key: 'assignee',
-              width: 120,
+              width: 160,
               render: (_, task) => task.assignee?.name ?? t('待分配'),
             },
             {
@@ -587,7 +594,7 @@ export function ProjectTasks({ project, session }: { project: Project; session: 
             {
               title: t('关联需求'),
               key: 'requirement',
-              width: 180,
+              width: 210,
               render: (_, task) => (
                 <Link to={href(task.requirement.id)}>{task.requirement.code}</Link>
               ),

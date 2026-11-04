@@ -352,6 +352,7 @@ export function ProjectMembers({
                 canManage ? (
                   <Space size={4}>
                     <Button
+                      className={styles.memberAction}
                       type="link"
                       size="small"
                       onClick={() => setDialog({ open: true, member })}
@@ -377,6 +378,7 @@ export function ProjectMembers({
                         }}
                       >
                         <Button
+                          className={styles.memberAction}
                           type="text"
                           danger
                           size="small"

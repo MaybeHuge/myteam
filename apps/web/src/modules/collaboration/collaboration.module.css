@@ -64,7 +64,7 @@
 .records article {
   display: flex;
   gap: 13px;
-  padding: 20px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #eef1eb;
 }
 .records article > div:last-child {
@@ -89,7 +89,7 @@
   margin: 10px 0 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: 13px;
   color: #505b50;
   line-height: 1.9;
 }
@@ -113,11 +113,15 @@
   color: #83907e;
   font-size: 12px;
 }
+.upload :global(.ant-btn),
+.files :global(.ant-btn) {
+  font-size: 12px;
+}
 .files article {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 17px 0;
+  padding: 7px 0;
   border-bottom: 1px solid #eef1eb;
 }
 .files article > :global(.anticon) {
@@ -149,7 +153,7 @@
 .notifications article {
   display: flex;
   gap: 12px;
-  padding: 18px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid #eff2ed;
   border-radius: 8px;
 }

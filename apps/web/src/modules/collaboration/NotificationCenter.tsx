@@ -1,3 +1,4 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { t, useLocale } from '../../i18n';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -26,7 +27,7 @@ export function NotificationCenter({ session }: { session: SessionResponse }) {
     mutationFn: (id: string) =>
       request(`/notifications/${id}/read`, {
         method: 'POST',
-        headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
+        headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': randomUUID() },
       }),
     onSuccess: async () => {
       if (unread) setPage(1);

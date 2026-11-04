@@ -1,3 +1,5 @@
+import { randomUUID } from '../../shared/random-uuid';
+import detailStyles from '../../components/detail.module.css';
 import { testRecordLabels, qualityLabels } from '../../i18n/labels';
 import { t, useLocale } from '../../i18n';
 import { useRef, useState } from 'react';
@@ -170,7 +172,7 @@ export function CreateTestRecord({
       for (const item of files) {
         let entry = uploaded.current.get(item.uid);
         if (!entry) {
-          entry = { key: crypto.randomUUID() };
+          entry = { key: randomUUID() };
           uploaded.current.set(item.uid, entry);
         }
         if (!entry.id) {
@@ -440,7 +442,13 @@ export function TestRecordDetail({
   });
   const record = detail.data;
   return (
-    <Drawer open size="min(800px, 100vw)" title={t('测试记录详情')} onClose={onClose}>
+    <Drawer
+      className={detailStyles.detail}
+      open
+      size="min(800px, 100vw)"
+      title={t('测试记录详情')}
+      onClose={onClose}
+    >
       {detail.isPending ? (
         <Skeleton active />
       ) : detail.isError || !record ? (
@@ -464,30 +472,39 @@ export function TestRecordDetail({
               {record.executor.name}
             </span>
           </Space>
-          <p>
-            {t('需求：')}
-            <Link
-              to={`/projects/${props.project.id}?tab=requirements&requirement=${record.requirementId}`}
-            >
-              {record.requirementTitle}
-            </Link>{' '}
-            {t('· 需求修订 ')}
-            {record.requirementRevision} {t(' · 第 ')}
-            {record.cycle} {t(' 轮')}
-          </p>
-          <p>
-            {t('用例：')}
-            <Link to={`/projects/${props.project.id}?tab=test-cases&case=${record.testCaseId}`}>
-              {record.caseCode}
-            </Link>{' '}
-            {t('· 修订 ')}
-            {record.caseRevision}
-          </p>
-          <p>
-            {t('环境：')}
-            {record.environment} {t(' · 构建：')}
-            {record.buildIdentifier ?? t('未指定')}
-          </p>
+          <dl className={styles.facts}>
+            <div>
+              <dt>{t('需求')}</dt>
+              <dd>
+                <Link
+                  to={`/projects/${props.project.id}?tab=requirements&requirement=${record.requirementId}`}
+                >
+                  {record.requirementTitle}
+                </Link>{' '}
+                {t('· 需求修订 ')}
+                {record.requirementRevision} {t(' · 第 ')}
+                {record.cycle} {t(' 轮')}
+              </dd>
+            </div>
+            <div>
+              <dt>{t('用例')}</dt>
+              <dd>
+                <Link to={`/projects/${props.project.id}?tab=test-cases&case=${record.testCaseId}`}>
+                  {record.caseCode}
+                </Link>{' '}
+                {t('· 修订 ')}
+                {record.caseRevision}
+              </dd>
+            </div>
+            <div>
+              <dt>{t('环境')}</dt>
+              <dd>{record.environment}</dd>
+            </div>
+            <div>
+              <dt>{t('构建')}</dt>
+              <dd>{record.buildIdentifier ?? t('未指定')}</dd>
+            </div>
+          </dl>
           <Tabs
             items={[
               {

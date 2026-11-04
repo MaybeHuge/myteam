@@ -436,7 +436,7 @@ export function App() {
             headerColor: '#829372',
             rowHoverBg: '#f8fbf5',
             borderColor: '#edf1e8',
-            cellPaddingBlock: 17,
+            cellPaddingBlock: 6,
           },
           Drawer: { paddingLG: 28 },
           Tabs: { inkBarColor: '#39815c' },

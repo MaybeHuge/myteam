@@ -1,3 +1,4 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { t, useLocale } from '../../i18n';
 import { EmptyPage } from '../../shared/EmptyPage';
 import { readPage } from '../../shared/list-state';
@@ -53,7 +54,7 @@ export function UsersPage({ session }: { session: SessionResponse }) {
     mutationFn: (user: ManagedUser) =>
       request(`/users/${user.id}/status`, {
         method: 'POST',
-        headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': crypto.randomUUID() },
+        headers: { 'X-CSRF-Token': session.csrfToken, 'Idempotency-Key': randomUUID() },
         body: JSON.stringify({ active: !user.active, version: user.version }),
       }),
     onSuccess: async () => {

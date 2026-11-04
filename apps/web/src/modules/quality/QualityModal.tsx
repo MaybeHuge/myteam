@@ -1,3 +1,4 @@
+import { randomUUID } from '../../shared/random-uuid';
 import { qualityLabels } from '../../i18n/labels';
 import { t, localizeLabels, useLocale } from '../../i18n';
 import { useRef, useState } from 'react';
@@ -103,7 +104,7 @@ export function QualityModal({
       for (const item of files) {
         let entry = uploadKeys.current.get(item.uid);
         if (!entry) {
-          entry = { key: crypto.randomUUID(), done: false };
+          entry = { key: randomUUID(), done: false };
           uploadKeys.current.set(item.uid, entry);
         }
         if (entry.done) continue;

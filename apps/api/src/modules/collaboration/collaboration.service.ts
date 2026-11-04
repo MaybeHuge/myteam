@@ -280,6 +280,38 @@ export class CollaborationService {
       throw error;
     }
   }
+  async removeAttachment(projectId: string, targetInput: unknown, id: string, req: Request) {
+    const actor = await this.identity.requireWrite(req);
+    const target = collaborationTargetSchema.parse(targetInput);
+    let removedKey: string | undefined;
+    const result = await this.commands.run(
+      actor.userId,
+      req.get('idempotency-key'),
+      { action: 'attachment.delete', projectId, ...target, id },
+      async (tx) => {
+        await this.authorize(tx, actor, projectId, target, req, true);
+        const row = await tx.attachment.findFirst({ where: { id, projectId, ...target } });
+        if (!row) throw new ApiException(404, 'NOT_FOUND', '附件不存在');
+        await tx.attachment.delete({ where: { id } });
+        if (row.storageBucket === this.storage.bucket) removedKey = row.storageKey;
+        await this.events.record(tx, {
+          actorId: actor.userId,
+          projectId,
+          requestId: req.requestId,
+          action: 'attachment.deleted',
+          target,
+          details: { attachmentId: id, filename: row.filename },
+        });
+        return { id };
+      },
+      async (tx) => {
+        await this.authorize(tx, actor, projectId, target, req, true);
+      },
+    );
+    // 仅在事务成功后清理；失败时由孤立对象清理任务回收。
+    if (removedKey) await this.discard(removedKey);
+    return result;
+  }
   private async discard(storageKey: string) {
     try {
       await this.storage.remove(storageKey);

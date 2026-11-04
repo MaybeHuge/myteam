@@ -83,7 +83,7 @@
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 18px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #edf1e8;
 }
 .items article > div {
@@ -98,7 +98,7 @@
 }
 .itemHeading > a {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 13px;
   color: #304538;
   overflow-wrap: anywhere;
   margin-right: 8px;
@@ -108,7 +108,7 @@
   display: inline-block;
   color: #65725f;
   font-size: 12px;
-  margin-top: 10px;
+  margin-top: 4px;
   margin-right: 20px;
   overflow-wrap: anywhere;
 }

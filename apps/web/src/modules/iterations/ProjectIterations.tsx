@@ -1,3 +1,4 @@
+import detailStyles from '../../components/detail.module.css';
 import { iterationStatusLabels } from '../../i18n/labels';
 import { t, useLocale, getLocale } from '../../i18n';
 import { readPage } from '../../shared/list-state';
@@ -335,6 +336,7 @@ export function ProjectIterations({
       )}
       {!!detailId && (
         <Drawer
+          className={detailStyles.detail}
           open
           size={660}
           title={t('迭代计划')}
