@@ -62,7 +62,7 @@ export class WorkbenchService {
         UNION ALL
         SELECT a.kind,d.id,d.title,d.status::text,d."projectId",NULL::date,d."deferUntil",false,concat('BUG-',lpad(d.number::text,4,'0'))
         FROM "Defect" d CROSS JOIN LATERAL (VALUES
-          ('DEFECT_TRIAGE'::text,d."retesterId",d.status='UNCONFIRMED',ARRAY['OWNER','TESTER']::"ProjectRole"[]),
+          ('DEFECT_TRIAGE'::text,d."assigneeId",d.status='UNCONFIRMED',ARRAY['OWNER','DEVELOPER']::"ProjectRole"[]),
           ('DEFECT_FIX'::text,d."assigneeId",d.status IN ('OPEN','FIXING'),ARRAY['OWNER','DEVELOPER']::"ProjectRole"[]),
           ('DEFECT_RETEST'::text,d."retesterId",d.status='AWAITING_RETEST',ARRAY['OWNER','TESTER']::"ProjectRole"[]),
           ('DEFECT_FOLLOW_UP'::text,d."assigneeId",d.status='DEFERRED',ARRAY['OWNER','DEVELOPER']::"ProjectRole"[])

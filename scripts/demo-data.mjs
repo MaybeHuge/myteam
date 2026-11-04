@@ -479,7 +479,7 @@ try {
         });
         continue;
       }
-      await act(tester, `${q}/defects/${defect.id}`, 'confirm');
+      await act(developer, `${q}/defects/${defect.id}`, 'confirm');
       await act(developer, `${q}/defects/${defect.id}`, 'start');
       if (i === 8) continue;
       const b2 = await build(2);

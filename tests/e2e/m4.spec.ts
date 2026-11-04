@@ -202,8 +202,9 @@ test('轻量测试闭环：开发完成任务、用例发起记录、截图、�
   await qa.goto(`/projects/${p}?tab=defects&defect=${bug}`);
   await qa.getByRole('tab', { name: '关联与处理记录', exact: true }).click();
   await expect(qa.getByText('关联测试记录', { exact: true })).toBeVisible();
-  await act(qa, '确认缺陷');
+  await expect(qa.getByRole('button', { name: '确认缺陷', exact: true })).toHaveCount(0);
   await dev.goto(`/projects/${p}?tab=defects&defect=${bug}`);
+  await act(dev, '确认缺陷');
   await act(dev, '开始修复');
   await dev.getByRole('button', { name: '提交修复', exact: true }).click();
   const fix = dev.getByRole('dialog', { name: '提交修复', exact: true });

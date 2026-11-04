@@ -357,25 +357,31 @@ export class TestCasesService {
   async generateCases(projectId: string, requirementId: string, input: unknown, req: Request) {
     const { provider } = z.object({ provider: z.string().min(1).max(32) }).parse(input);
     const actor = await this.identity.requireWrite(req);
-    const requirement = await this.db.$transaction(async (tx) => {
-      await this.authorize(tx, actor, projectId, req, 'case:write');
-      const row = await tx.requirement.findFirst({
-        where: { id: requirementId, projectId },
-        include: { workItem: true },
-      });
-      if (!row) throw new ApiException(404, 'NOT_FOUND', '需求不存在或不属于当前项目');
-      if (
-        !['CONFIRMED', 'IMPLEMENTING', 'ACCEPTING', 'TESTING', 'COMPLETED'].includes(row.status) ||
-        row.acceptedRevision !== row.revision
-      )
-        throw new ApiException(422, 'BUSINESS_RULE_VIOLATION', '请先确认需求后再生成用例');
-      return {
-        title: row.workItem.title,
-        description: row.description,
-        acceptanceCriteria: row.acceptanceCriteria,
-        revision: row.revision,
-      };
-    });
+    const requirement = await this.db.$transaction(
+      async (tx) => {
+        await this.authorize(tx, actor, projectId, req, 'case:write');
+        const row = await tx.requirement.findFirst({
+          where: { id: requirementId, projectId },
+          include: { workItem: true, documentVersion: { select: { plainText: true } } },
+        });
+        if (!row) throw new ApiException(404, 'NOT_FOUND', '需求不存在或不属于当前项目');
+        if (
+          !['CONFIRMED', 'IMPLEMENTING', 'ACCEPTING', 'TESTING', 'COMPLETED'].includes(
+            row.status,
+          ) ||
+          row.acceptedRevision !== row.revision
+        )
+          throw new ApiException(422, 'BUSINESS_RULE_VIOLATION', '请先确认需求后再生成用例');
+        return {
+          title: row.workItem.title,
+          description: row.description,
+          acceptanceCriteria: row.acceptanceCriteria,
+          document: row.documentVersion?.plainText ?? null,
+          revision: row.revision,
+        };
+      },
+      { isolationLevel: 'RepeatableRead' },
+    );
     const { revision, ...content } = requirement;
     const generated = await generateCases(
       content,

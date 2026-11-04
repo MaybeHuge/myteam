@@ -66,8 +66,8 @@ export const english: Record<string, string> = {
     'The save result is unknown. Retry this case; its content is locked to prevent duplicates.',
 
   'AI 生成测试用例': 'Generate test cases with AI',
-  '生成时会将需求标题、描述和验收标准发送给配置的 AI 服务。请检查结果，保存后仍需评审。':
-    'The requirement title, description and acceptance criteria will be sent to the configured AI service. Review the results; saved drafts still require review.',
+  '生成时会将当前需求标题、描述、验收标准及已应用的需求文档文字发送给 AI 服务；图片仅包含文字说明。未应用的文档草稿不会发送。请检查结果，保存后仍需评审。':
+    'The current requirement title, description, acceptance criteria and applied document text will be sent to the AI service. Images are represented only by their text descriptions. Unapplied drafts are not sent. Review the results; saved drafts still require review.',
   开始生成: 'Generate',
   保存所选草稿: 'Save selected drafts',
   需求内容版本: 'Requirement revision',

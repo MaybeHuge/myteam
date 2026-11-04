@@ -355,6 +355,59 @@ test('AI 生成受权限和需求状态保护，校验模型结果并由用户�
       ).expect(201)
     ).body;
     assert.equal((await get(created.id)).status, 'DRAFT');
+    assert.equal(JSON.parse(received.messages[1].content).document, null);
+
+    const requirementPath = `/projects/${a}/requirements`;
+    const documentRequirement = (
+      await post(sessions.owner, requirementPath, {
+        title: '文档需求生成用例',
+        description: '验证当前需求',
+        acceptanceCriteria: '满足文档中描述的限制',
+        ownerId: users.owner.id,
+      }).expect(201)
+    ).body.id;
+    const detailPath = `${requirementPath}/${documentRequirement}`;
+    const documentPath = `${detailPath}/document`;
+    await post(sessions.owner, documentPath, { template: 'blank' }).expect(201);
+    let document = (await sessions.owner.agent.get(`/api/v1${documentPath}`).expect(200)).body;
+    const content = (text) => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+    });
+    await post(sessions.owner, `${documentPath}/save`, {
+      version: document.draft.version,
+      content: content('已应用文档：超过五次登录失败锁定账户。'),
+    }).expect(201);
+    document = (await sessions.owner.agent.get(`/api/v1${documentPath}`).expect(200)).body;
+    await post(sessions.owner, `${documentPath}/apply`, {
+      version: document.draft.version,
+      requirementVersion: document.requirement.version,
+    }).expect(201);
+    let detail = (await sessions.owner.agent.get(`/api/v1${detailPath}`).expect(200)).body;
+    await post(sessions.owner, `${detailPath}/submit`, {
+      version: detail.version,
+      reviewerId: users.owner.id,
+    }).expect(201);
+    detail = (await sessions.owner.agent.get(`/api/v1${detailPath}`).expect(200)).body;
+    await post(sessions.owner, `${detailPath}/approve`, { version: detail.version }).expect(201);
+    document = (await sessions.owner.agent.get(`/api/v1${documentPath}`).expect(200)).body;
+    await post(sessions.owner, `${documentPath}/save`, {
+      version: document.draft.version,
+      content: content('未应用的草稿内容不应发送。'),
+    }).expect(201);
+    const documentResult = (
+      await post(sessions.tester, route(`ai-generate/${documentRequirement}`), {
+        provider: 'bailian',
+      }).expect(201)
+    ).body;
+    const sent = JSON.parse(received.messages[1].content);
+    assert.equal(sent.title, '文档需求生成用例');
+    assert.equal(sent.description, '验证当前需求');
+    assert.equal(sent.acceptanceCriteria, '满足文档中描述的限制');
+    assert.equal(sent.document, '已应用文档：超过五次登录失败锁定账户。');
+    assert.equal(JSON.stringify(sent).includes('未应用的草稿内容'), false);
+    detail = (await sessions.owner.agent.get(`/api/v1${detailPath}`).expect(200)).body;
+    assert.equal(documentResult.revision, detail.revision);
     unauthorized = true;
     const authError = await post(sessions.tester, path, { provider: 'bailian' }).expect(502);
     assert.match(authError.body.message, /认证失败/);

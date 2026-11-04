@@ -73,7 +73,6 @@ export class DefectsService {
     if (c.project.status === 'ACTIVE') {
       if (this.support.allowed(c, 'defect:retest')) {
         actions.push('assign', 'link');
-        if (row.status === 'UNCONFIRMED') actions.push('confirm');
         if (!terminalDefects.includes(row.status as (typeof terminalDefects)[number]))
           actions.push('dispose');
         if (
@@ -91,6 +90,7 @@ export class DefectsService {
         this.support.allowed(c, 'defect:fix') &&
         (row.assigneeId === c.actor.userId || this.support.manager(c))
       ) {
+        if (row.status === 'UNCONFIRMED') actions.push('confirm');
         if (row.status === 'OPEN') actions.push('start');
         if (row.status === 'FIXING') actions.push('fix');
         if (row.status === 'AWAITING_RETEST') actions.push('updateFixBuild');
@@ -369,7 +369,9 @@ export class DefectsService {
       projectId,
       req,
       { action: `defect.${action}`, id, ...data },
-      ['start', 'fix', 'updateFixBuild'].includes(action) ? 'defect:fix' : 'defect:retest',
+      ['confirm', 'start', 'fix', 'updateFixBuild'].includes(action)
+        ? 'defect:fix'
+        : 'defect:retest',
       async (c) => {
         let row = await this.find(c.tx, projectId, id);
         checkVersion(row, data.version);
@@ -602,6 +604,12 @@ export class DefectsService {
         await this.refreshProgress(c, [id]);
         return { id, version: row.version };
       },
+      action === 'confirm'
+        ? async (c) => {
+            const row = await this.find(c.tx, projectId, id);
+            this.support.assigned(c, row.assigneeId);
+          }
+        : undefined,
     );
   }
 }

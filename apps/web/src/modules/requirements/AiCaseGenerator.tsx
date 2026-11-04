@@ -177,7 +177,7 @@ export function AiCaseGenerator({
         showIcon
         type="info"
         title={t(
-          '生成时会将需求标题、描述和验收标准发送给配置的 AI 服务。请检查结果，保存后仍需评审。',
+          '生成时会将当前需求标题、描述、验收标准及已应用的需求文档文字发送给 AI 服务；图片仅包含文字说明。未应用的文档草稿不会发送。请检查结果，保存后仍需评审。',
         )}
       />
       {revision === undefined && (

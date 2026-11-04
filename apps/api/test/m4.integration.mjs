@@ -151,7 +151,7 @@ async function defectAct(id, action, extra = {}, s = sessions.tester) {
   }).expect(201);
 }
 async function fix(id) {
-  await defectAct(id, 'confirm');
+  await defectAct(id, 'confirm', {}, sessions.developer);
   await defectAct(id, 'start', {}, sessions.developer);
   await defectAct(id, 'fix', { evidence: '已修复重复校验' }, sessions.developer);
 }
@@ -159,6 +159,7 @@ before(async () => {
   const passwordHash = await argon2.hash(testPassword);
   for (const role of [
     'owner',
+    'owner2',
     'developer',
     'developer2',
     'tester',
@@ -189,17 +190,27 @@ before(async () => {
     if (name === 'main') project = r.body.id;
     else other = r.body.id;
   }
-  for (const role of ['developer', 'developer2', 'tester', 'tester2', 'viewer', 'publisher'])
+  for (const role of [
+    'owner2',
+    'developer',
+    'developer2',
+    'tester',
+    'tester2',
+    'viewer',
+    'publisher',
+  ])
     await post(sessions.owner, `${base()}/members`, {
       email: users[role].email,
       roles: [
-        role.startsWith('developer')
-          ? 'DEVELOPER'
-          : role.startsWith('tester')
-            ? 'TESTER'
-            : role === 'publisher'
-              ? 'RELEASE_MANAGER'
-              : 'VIEWER',
+        role === 'owner2'
+          ? 'OWNER'
+          : role.startsWith('developer')
+            ? 'DEVELOPER'
+            : role.startsWith('tester')
+              ? 'TESTER'
+              : role === 'publisher'
+                ? 'RELEASE_MANAGER'
+                : 'VIEWER',
       ],
     }).expect(201);
 });
@@ -215,6 +226,60 @@ after(async () => {
     await db.user.deleteMany({ where: { id: { in: people } } });
   }
   await db.$disconnect();
+});
+
+test('待确认缺陷由当前开发负责人或项目负责人确认，改派同步待办和权限', async () => {
+  const requirementId = await reqNew();
+  const makeDefect = async () =>
+    (await post(sessions.tester, quality('defects'), defectInput(requirementId)).expect(201)).body
+      .id;
+  const bug = await makeDefect();
+  const triage = async (session) =>
+    (
+      await session.agent
+        .get(`/api/v1/workbench/todos?kind=DEFECT_TRIAGE&projectId=${project}&pageSize=100`)
+        .expect(200)
+    ).body.items;
+  assert.ok((await triage(sessions.developer)).some((item) => item.id === bug));
+  assert.ok(!(await triage(sessions.tester)).some((item) => item.id === bug));
+  assert.ok(
+    (await get(quality('defects', bug), sessions.developer)).allowedActions.includes('confirm'),
+  );
+  for (const role of ['tester', 'developer2', 'viewer']) {
+    assert.ok(
+      !(await get(quality('defects', bug), sessions[role])).allowedActions.includes('confirm'),
+    );
+    await post(sessions[role], `${quality('defects', bug)}/confirm`, {
+      version: 1,
+      reason: '确认',
+    }).expect(403);
+  }
+  await post(sessions.outsider, `${quality('defects', bug)}/confirm`, {
+    version: 1,
+    reason: '确认',
+  }).expect(404);
+  await defectAct(bug, 'assign', { assigneeId: users.developer2.id, retesterId: users.tester.id });
+  assert.ok(!(await triage(sessions.developer)).some((item) => item.id === bug));
+  assert.ok((await triage(sessions.developer2)).some((item) => item.id === bug));
+  const current = await get(quality('defects', bug));
+  await post(sessions.developer, `${quality('defects', bug)}/confirm`, {
+    version: current.version,
+    reason: '确认',
+  }).expect(403);
+  const key = randomUUID();
+  const data = { version: current.version, reason: '确认' };
+  await post(sessions.developer2, `${quality('defects', bug)}/confirm`, data, key).expect(201);
+  assert.equal((await get(quality('defects', bug))).status, 'OPEN');
+  assert.ok(!(await triage(sessions.developer2)).some((item) => item.id === bug));
+  await defectAct(bug, 'assign', { assigneeId: users.developer.id, retesterId: users.tester.id });
+  await post(sessions.developer2, `${quality('defects', bug)}/confirm`, data, key).expect(403);
+  const managerBug = await makeDefect();
+  assert.ok(
+    (await get(quality('defects', managerBug), sessions.owner2)).allowedActions.includes('confirm'),
+  );
+  await defectAct(managerBug, 'confirm', {}, sessions.owner2);
+  const adminBug = await makeDefect();
+  await defectAct(adminBug, 'confirm', {}, sessions.owner);
 });
 
 test('任务只有三列，负责人完成和重新开始自动汇总需求，其他开发不可代操作', async () => {
@@ -599,7 +664,7 @@ test('有构建上下文时修复和复测必须使用新构建，版本范围�
   const b1 = await build(),
     first = await recordNew(f, { buildId: b1 });
   const bug = (await (await finish(first, 'FAILED')).expect(201)).body.defectIds[0];
-  await defectAct(bug, 'confirm');
+  await defectAct(bug, 'confirm', {}, sessions.developer);
   await defectAct(bug, 'start', {}, sessions.developer);
   const d = await get(quality('defects', bug));
   await post(sessions.developer, `${quality('defects', bug)}/fix`, {
@@ -878,7 +943,7 @@ test('待复测缺陷可以由开发更新失效的修复构建并继续复测',
   const b1 = await build();
   const initial = await recordNew(f, { buildId: b1 });
   const bug = (await (await finish(initial, 'FAILED')).expect(201)).body.defectIds[0];
-  await defectAct(bug, 'confirm');
+  await defectAct(bug, 'confirm', {}, sessions.developer);
   await defectAct(bug, 'start', {}, sessions.developer);
   const b2 = await build();
   await defectAct(bug, 'fix', { buildId: b2, evidence: '已修复' }, sessions.developer);
