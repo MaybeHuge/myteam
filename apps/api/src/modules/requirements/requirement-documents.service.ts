@@ -202,7 +202,7 @@ export class RequirementDocumentsService {
           true,
         );
         const old = await tx.requirementDocumentDraft.findUnique({ where: { requirementId } });
-        if (kind === 'create' && old)
+        if (kind === 'create' && (old || row.documentVersionId))
           throw new ApiException(409, 'CONFLICT', '需求文档草稿已存在，请刷新后继续编辑');
         if (kind !== 'create' && (!old || !('version' in data) || old.version !== data.version))
           throw new ApiException(409, 'CONFLICT', '文档已被其他成员更新，当前编辑内容已保留');

@@ -54,6 +54,11 @@ import { loadProjects, recentProjectsKey } from '../modules/projects/api';
 import { ProjectSwitcher } from '../modules/projects/ProjectSwitcher';
 import { ProjectIcon } from '../modules/projects/presentation';
 
+const ProjectDocumentPage = lazy(() =>
+  import('../modules/project-documents/ProjectDocumentPage').then((m) => ({
+    default: m.ProjectDocumentPage,
+  })),
+);
 const RequirementDocumentPage = lazy(() =>
   import('../modules/requirements/RequirementDocumentPage').then((m) => ({
     default: m.RequirementDocumentPage,
@@ -307,6 +312,10 @@ function Workspace({ session }: { session: SessionResponse }) {
               <Route
                 path="/projects/:projectId/requirements/:requirementId/document"
                 element={<DocumentRoute session={session} />}
+              />
+              <Route
+                path="/projects/:projectId/documents/:documentId"
+                element={<ProjectDocumentPage session={session} />}
               />
               <Route path="/projects/:projectId" element={<ProjectRoute session={session} />} />
               <Route

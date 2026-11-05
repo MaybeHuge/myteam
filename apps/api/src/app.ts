@@ -1,3 +1,4 @@
+import { ProjectDocumentsModule } from './modules/project-documents/project-documents.module.js';
 import 'reflect-metadata';
 import { AiModule } from './modules/ai/ai.module.js';
 import { QualityModule } from './modules/quality/quality.module.js';
@@ -33,6 +34,7 @@ import { IterationsModule } from './modules/iterations/iterations.module.js';
     CollaborationModule,
     WorkbenchModule,
     RequirementsModule,
+    ProjectDocumentsModule,
     TasksModule,
     TestCasesModule,
     QualityModule,

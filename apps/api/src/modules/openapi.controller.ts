@@ -147,6 +147,97 @@ const queryParameters = (schema: Parameters<typeof jsonSchema>[0]) => {
   }));
 };
 
+const projectDocumentPrefix = '/projects/{projectId}/documents';
+const projectDocumentParameters = [projectPathId, pathId];
+const projectDocumentPaths = {
+  [projectDocumentPrefix]: {
+    get: {
+      ...securedGet(
+        '分页查看项目文档和可见需求文档',
+        jsonSchema(quality.projectDocumentListSchema),
+      ),
+      parameters: [
+        projectPathId,
+        ...queryParameters(quality.paginationSchema),
+        { name: 'q', in: 'query', schema: { type: 'string', maxLength: 200 } },
+        {
+          name: 'kind',
+          in: 'query',
+          schema: { type: 'string', enum: ['all', 'project', 'requirement'] },
+        },
+      ],
+    },
+    post: securedCommand('创建独立项目文档', jsonSchema(quality.createProjectDocumentSchema), [
+      projectPathId,
+      commandKey,
+    ]),
+  },
+  [`${projectDocumentPrefix}/requirements`]: {
+    get: {
+      ...securedGet(
+        '分页选择可关联的需求',
+        jsonSchema(quality.projectDocumentRequirementOptionsSchema),
+      ),
+      parameters: [
+        projectPathId,
+        ...queryParameters(quality.paginationSchema),
+        { name: 'q', in: 'query', schema: { type: 'string', maxLength: 200 } },
+      ],
+    },
+  },
+  [`${projectDocumentPrefix}/{id}`]: {
+    get: {
+      ...securedGet('查看独立项目文档', jsonSchema(quality.projectDocumentSchema)),
+      parameters: projectDocumentParameters,
+    },
+  },
+  [`${projectDocumentPrefix}/{id}/save`]: {
+    post: securedCommand('按版本保存项目文档', jsonSchema(quality.saveProjectDocumentSchema), [
+      ...projectDocumentParameters,
+      commandKey,
+    ]),
+  },
+  [`${projectDocumentPrefix}/{id}/images`]: {
+    get: {
+      ...securedGet('查看项目文档已上传的图片', jsonSchema(quality.documentImageListSchema)),
+      parameters: [...projectDocumentParameters, ...queryParameters(quality.paginationSchema)],
+    },
+    post: {
+      ...securedCommand('上传项目文档图片', {}, [
+        ...projectDocumentParameters,
+        commandKey,
+        {
+          name: 'filename',
+          in: 'query',
+          required: true,
+          schema: { type: 'string', maxLength: 200 },
+        },
+      ]),
+      requestBody: {
+        required: true,
+        content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+      },
+    },
+  },
+  [`${projectDocumentPrefix}/{id}/images/{imageId}/preview`]: {
+    get: {
+      ...securedGet('授权查看项目文档图片', {}),
+      parameters: [...projectDocumentParameters, { ...pathId, name: 'imageId' }],
+      responses: {
+        '200': {
+          description: '授权图片流',
+          content: Object.fromEntries(
+            ['image/png', 'image/jpeg', 'image/webp'].map((type) => [
+              type,
+              { schema: { type: 'string', format: 'binary' } },
+            ]),
+          ),
+        },
+      },
+    },
+  },
+};
+
 const documentPrefix = '/projects/{projectId}/requirements/{requirementId}/document';
 const documentParameters = [projectPathId, { ...pathId, name: 'requirementId' }];
 const documentPaths: Record<string, unknown> = {
@@ -346,6 +437,7 @@ export class OpenApiController {
       paths: {
         ...qualityPaths,
         ...documentPaths,
+        ...projectDocumentPaths,
         '/projects/{projectId}/requirements': {
           get: {
             ...securedGet('分页查询项目需求', jsonSchema(requirementListSchema)),

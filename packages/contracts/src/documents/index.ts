@@ -321,3 +321,55 @@ export const documentImageListSchema = z.object({
 });
 export type RequirementDocument = z.infer<typeof requirementDocumentSchema>;
 export type DocumentVersion = z.infer<typeof documentVersionSchema>;
+
+export const createProjectDocumentSchema = z.object({ title: z.string().trim().min(1).max(200) });
+export const saveProjectDocumentSchema = createProjectDocumentSchema.extend({
+  version: z.number().int().positive(),
+  content: documentContentSchema,
+});
+export const projectDocumentListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      kind: z.enum(['project', 'requirement']),
+      requirementId: z.uuid().nullable(),
+      requirementCode: z.string().nullable(),
+      status: z.enum(['draft', 'applied', 'document']),
+      updatedAt: z.iso.datetime(),
+      updatedBy: z.string(),
+    }),
+  ),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  canCreate: z.boolean(),
+});
+export const projectDocumentRequirementOptionsSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.uuid(),
+      title: z.string(),
+      code: z.string(),
+      hasDocument: z.boolean(),
+      canCreate: z.boolean(),
+    }),
+  ),
+  total: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+});
+export const projectDocumentSchema = z.object({
+  id: z.uuid(),
+  projectId: z.uuid(),
+  title: z.string(),
+  content: documentContentSchema,
+  version: z.number().int().positive(),
+  createdById: z.uuid(),
+  createdByName: z.string(),
+  updatedById: z.uuid(),
+  updatedByName: z.string(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+  canEdit: z.boolean(),
+});

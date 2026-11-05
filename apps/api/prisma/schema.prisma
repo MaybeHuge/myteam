@@ -99,6 +99,7 @@ model Project {
   version             Int                 @default(1)
   createdAt           DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
+  documentDrafts      RequirementDocumentDraft[]
   members             ProjectMember[]
   iterations          Iteration[]
   comments            Comment[]
@@ -900,8 +901,12 @@ model DefectRecordLink {
 model RequirementDocumentDraft {
   id            String      @id @default(uuid()) @db.Uuid
   projectId     String      @db.Uuid
-  requirementId String      @unique @db.Uuid
-  requirement   Requirement @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requirementId String?     @unique @db.Uuid
+  requirement   Requirement? @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  title         String?     @db.VarChar(200)
+  createdById   String?     @db.Uuid
+  createdByName String?     @db.VarChar(200)
   content       Json
   plainText     String
   version       Int         @default(1)
@@ -910,8 +915,10 @@ model RequirementDocumentDraft {
   updatedByName String      @db.VarChar(200)
   createdAt     DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime    @updatedAt @db.Timestamptz(3)
-
+  projectImages RequirementDocumentImage[]
   @@unique([projectId, requirementId])
+  @@unique([projectId, id])
+  @@index([projectId, updatedAt])
 }
 
 model RequirementDocumentVersion {
@@ -935,8 +942,10 @@ model RequirementDocumentVersion {
 model RequirementDocumentImage {
   id              String                            @id @default(uuid()) @db.Uuid
   projectId       String                            @db.Uuid
-  requirementId   String                            @db.Uuid
-  requirement     Requirement                       @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  requirementId   String?                           @db.Uuid
+  requirement     Requirement?                      @relation(fields: [projectId, requirementId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
+  documentDraftId String?                           @db.Uuid
+  documentDraft   RequirementDocumentDraft?         @relation(fields: [projectId, documentDraftId], references: [projectId, id], onDelete: Cascade, onUpdate: NoAction)
   uploaderId      String                            @db.Uuid
   filename        String                            @db.VarChar(200)
   storageKey      String                            @unique @db.VarChar(80)
@@ -950,6 +959,7 @@ model RequirementDocumentImage {
 
   @@unique([projectId, requirementId, id])
   @@index([draftReferenced, createdAt])
+  @@index([projectId, documentDraftId, createdAt])
 }
 
 model RequirementDocumentVersionImage {
