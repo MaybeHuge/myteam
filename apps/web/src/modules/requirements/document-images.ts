@@ -3,33 +3,29 @@ import type { Editor } from '@tiptap/react';
 import { z } from 'zod';
 import { documentImageUrl } from './document-urls';
 
-function ownedImageId(
-  element: HTMLElement,
-  projectId: string,
-  requirementId: string,
-): string | null {
+function ownedImageId(element: HTMLElement, imageUrl: (id: string) => string): string | null {
   try {
     const source = new URL(element.getAttribute('src') ?? '', window.location.origin);
     const id = source.pathname.split('/').at(-2);
     if (!z.uuid().safeParse(id).success) return null;
     const marker = element.getAttribute('data-document-image');
     if (marker && marker !== id) return null;
-    return source.href ===
-      new URL(documentImageUrl(projectId, requirementId, id!), window.location.origin).href
-      ? id!
-      : null;
+    return source.href === new URL(imageUrl(id!), window.location.origin).href ? id! : null;
   } catch {
     return null;
   }
 }
 export function documentImageExtensions(projectId: string, requirementId: string) {
+  return documentImageExtensionsForUrl((id) => documentImageUrl(projectId, requirementId, id));
+}
+export function documentImageExtensionsForUrl(imageUrl: (id: string) => string) {
   return [
     ImageExtension.extend({
       addAttributes() {
         return {
           attachmentId: {
             default: null,
-            parseHTML: (element) => ownedImageId(element, projectId, requirementId),
+            parseHTML: (element) => ownedImageId(element, imageUrl),
           },
           alt: { default: '' },
           title: { default: null },
@@ -46,7 +42,7 @@ export function documentImageExtensions(projectId: string, requirementId: string
         return [
           {
             tag: 'img[src]',
-            getAttrs: (element) => (ownedImageId(element, projectId, requirementId) ? {} : false),
+            getAttrs: (element) => (ownedImageId(element, imageUrl) ? {} : false),
           },
         ];
       },
@@ -57,7 +53,7 @@ export function documentImageExtensions(projectId: string, requirementId: string
         return [
           'img',
           {
-            src: documentImageUrl(projectId, requirementId, String(node.attrs.attachmentId)),
+            src: imageUrl(String(node.attrs.attachmentId)),
             alt: node.attrs.alt,
             title: node.attrs.title,
             width: node.attrs.width,

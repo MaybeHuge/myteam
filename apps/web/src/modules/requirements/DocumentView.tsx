@@ -30,10 +30,12 @@ export function DocumentView({
   content,
   projectId,
   requirementId,
+  imageUrl,
 }: {
   content: DocumentContent;
-  projectId: string;
-  requirementId: string;
+  projectId?: string;
+  requirementId?: string;
+  imageUrl?: (id: string) => string;
 }) {
   useLocale();
   function render(node: DocumentNode, key: number): ReactNode {
@@ -134,7 +136,11 @@ export function DocumentView({
         return (
           <figure key={key} data-document-image={String(attrs.attachmentId)}>
             <Image
-              src={documentImageUrl(projectId, requirementId, String(attrs.attachmentId))}
+              src={
+                imageUrl
+                  ? imageUrl(String(attrs.attachmentId))
+                  : documentImageUrl(projectId!, requirementId!, String(attrs.attachmentId))
+              }
               alt={String(attrs.alt || t('文档图片'))}
               width={attrs.width ? Number(attrs.width) : undefined}
               style={{ maxWidth: '100%', height: 'auto' }}

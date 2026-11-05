@@ -1,3 +1,4 @@
+import { ProjectDocuments } from '../project-documents/ProjectDocuments';
 import { projectRoleLabels, projectStatusLabels } from '../../i18n/labels';
 import { t, useLocale, getLocale } from '../../i18n';
 import { ProjectTestRecords } from '../quality/ProjectTestRecords';
@@ -327,6 +328,7 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
     'records',
     'defects',
     'collaboration',
+    'documents',
   ].includes(params.get('tab') ?? '')
     ? params.get('tab')!
     : 'overview';
@@ -508,6 +510,11 @@ export function ProjectDetailPage({ session }: { session: SessionResponse }) {
                 session={session}
               />
             ),
+          },
+          {
+            key: 'documents',
+            label: t('项目文档'),
+            children: <ProjectDocuments project={project} session={session} />,
           },
           {
             key: 'members',
