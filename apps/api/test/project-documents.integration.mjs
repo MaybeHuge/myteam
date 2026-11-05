@@ -103,12 +103,47 @@ test('project list combines requirement and project documents and protects dupli
     ).hasDocument,
     true,
   );
-  const id = (await post(owner, base, { title: '部署说明' }).expect(201)).body.id;
+  const createKey = randomUUID();
+  const created = await post(owner, base, { title: '部署说明' }, createKey).expect(201);
+  const id = created.body.id;
+  await owner.agent
+    .post(`/api/v1${base}`)
+    .set('Origin', process.env.APP_ORIGIN)
+    .set('Idempotency-Key', randomUUID())
+    .send({ title: '缺少安全凭据' })
+    .expect(403);
+  await owner.agent
+    .post(`/api/v1${base}`)
+    .set('Origin', 'http://untrusted.invalid')
+    .set('X-CSRF-Token', owner.csrf)
+    .set('Idempotency-Key', randomUUID())
+    .send({ title: '来源错误' })
+    .expect(403);
+  assert.equal((await post(owner, base, { title: '部署说明' }, createKey).expect(201)).body.id, id);
+  await post(owner, base, { title: '不同标题' }, createKey).expect(409);
   const list = (await owner.agent.get(`/api/v1${base}`).expect(200)).body;
   assert.equal(list.total, 2);
   assert.ok(list.items.some((x) => x.kind === 'requirement' && x.id === requirement));
   assert.ok(list.items.some((x) => x.kind === 'project' && x.id === id));
   assert.equal((await viewer.agent.get(`/api/v1${base}`).expect(200)).body.total, 1);
+  const draft = (await owner.agent.get(`/api/v1${requirementBase}`).expect(200)).body;
+  await post(owner, `${requirementBase}/save`, {
+    version: draft.draft.version,
+    content: {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: '已应用的需求文档' }] }],
+    },
+  }).expect(201);
+  const beforeApply = (await owner.agent.get(`/api/v1${requirementBase}`).expect(200)).body;
+  await post(owner, `${requirementBase}/apply`, {
+    version: beforeApply.draft.version,
+    requirementVersion: beforeApply.requirement.version,
+  }).expect(201);
+  const readerList = (await viewer.agent.get(`/api/v1${base}?kind=requirement`).expect(200)).body;
+  assert.equal(readerList.total, 1);
+  assert.equal(readerList.items[0].id, requirement);
+  assert.equal(readerList.items[0].status, 'applied');
+  assert.match(readerList.items[0].requirementCode, /-REQ-0001$/);
   assert.equal(
     (await owner.agent.get(`/api/v1${base}?page=99&pageSize=1`).expect(200)).body.total,
     2,
@@ -125,14 +160,21 @@ test('project list combines requirement and project documents and protects dupli
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7ioAAAAASUVORK5CYII=',
     'base64',
   );
-  const upload = await owner.agent
-    .post(`/api/v1${base}/${id}/images?filename=test.png`)
-    .set('Origin', process.env.APP_ORIGIN)
-    .set('X-CSRF-Token', owner.csrf)
-    .set('Idempotency-Key', randomUUID())
-    .set('Content-Type', 'application/octet-stream')
-    .send(png)
-    .expect(201);
+  const uploadKey = randomUUID();
+  const uploadImage = (key = uploadKey) =>
+    owner.agent
+      .post(`/api/v1${base}/${id}/images?filename=test.png`)
+      .set('Origin', process.env.APP_ORIGIN)
+      .set('X-CSRF-Token', owner.csrf)
+      .set('Idempotency-Key', key)
+      .set('Content-Type', 'application/octet-stream')
+      .send(png);
+  const upload = await uploadImage().expect(201);
+  assert.equal((await uploadImage().expect(201)).body.id, upload.body.id);
+  assert.equal(
+    await db.requirementDocumentImage.count({ where: { projectId: project, documentDraftId: id } }),
+    1,
+  );
   const imageId = upload.body.id,
     preview = `/api/v1${base}/${id}/images/${imageId}/preview`;
   await viewer.agent.get(preview).expect(404);
@@ -178,10 +220,56 @@ test('project list combines requirement and project documents and protects dupli
     content,
   );
   await post(owner, `${base}/${id}/save`, { title: '部署说明', version: 1, content }).expect(409);
+  await post(owner, `${base}/${id}/save`, {
+    title: '无效图片',
+    version: 2,
+    content: {
+      type: 'doc',
+      content: [{ type: 'image', attrs: { src: 'https://example.com/image.png' } }],
+    },
+  }).expect(400);
+  const concurrent = await Promise.all([
+    post(owner, `${base}/${id}/save`, { title: '并发 A', version: 2, content }),
+    post(owner, `${base}/${id}/save`, { title: '并发 B', version: 2, content }),
+  ]);
+  assert.deepEqual(concurrent.map((response) => response.status).sort(), [201, 409]);
+  const anotherProject = (
+    await post(owner, '/projects', {
+      key: `D${randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()}`,
+      name: '另一个项目',
+    }).expect(201)
+  ).body.id;
+  projects.push(anotherProject);
+  await owner.agent.get(`/api/v1/projects/${anotherProject}/documents/${id}`).expect(404);
+  await owner.agent
+    .get(`/api/v1/projects/${anotherProject}/documents/${id}/images/${imageId}/preview`)
+    .expect(404);
+  await post(owner, `/projects/${anotherProject}/documents/${id}/save`, {
+    title: '跨项目',
+    version: 3,
+    content: { type: 'doc', content: [{ type: 'paragraph' }] },
+  }).expect(404);
   const other = (await post(owner, base, { title: '其他文档' }).expect(201)).body.id;
+  await post(owner, base, { title: '100%_专项说明' }).expect(201);
+  assert.equal(
+    (await owner.agent.get(`/api/v1${base}?q=${encodeURIComponent('%_')}`).expect(200)).body.total,
+    1,
+  );
+  assert.equal(
+    (await owner.agent.get(`/api/v1${base}?kind=project&page=2&pageSize=1`).expect(200)).body.total,
+    3,
+  );
   await post(owner, `${base}/${other}/save`, { title: '其他文档', version: 1, content }).expect(
     422,
   );
+  const membership = await db.projectMember.findUniqueOrThrow({
+    where: { projectId_userId: { projectId: project, userId: users[1].id } },
+  });
+  await post(owner, `/projects/${project}/members/${users[1].id}/remove`, {
+    version: membership.version,
+  }).expect(201);
+  await viewer.agent.get(`/api/v1${base}/${id}`).expect(404);
+  await viewer.agent.get(preview).expect(404);
   await db.project.update({ where: { id: project }, data: { status: 'COMPLETED' } });
   await post(owner, base, { title: '关闭后文档' }).expect(403);
 });

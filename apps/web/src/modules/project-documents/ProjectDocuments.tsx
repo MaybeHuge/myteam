@@ -154,6 +154,7 @@ export function ProjectDocuments({
         />
       )}
       <Table
+        scroll={{ x: 800 }}
         rowKey={(row) => `${row.kind}:${row.id}`}
         loading={list.isPending}
         dataSource={list.data?.items ?? []}
@@ -249,6 +250,7 @@ export function ProjectDocuments({
             />
             {choices.isError && <Alert type="error" title={errorMessage(choices.error)} />}
             <Table
+              scroll={{ x: 450 }}
               size="small"
               rowKey="id"
               loading={choices.isFetching}
