@@ -11,6 +11,10 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { static as serveStatic } from 'express';
+import { existsSync } from 'node:fs';
+import { extname, resolve } from 'node:path';
+import type { Request, Response, NextFunction } from 'express';
 import { InfrastructureModule } from './infrastructure/infrastructure.module.js';
 import { ErrorFilter, requestContext } from './common/http.js';
 import { IdentityModule } from './modules/identity/identity.module.js';
@@ -47,6 +51,27 @@ export async function createApp() {
   app.use(helmet());
   app.use(cookieParser());
   app.use(requestContext);
+  if (process.env.WEB_DIST_PATH) {
+    const root = resolve(process.env.WEB_DIST_PATH);
+    const index = resolve(root, 'index.html');
+    if (!existsSync(index)) throw new Error('WEB_DIST_PATH 中缺少 index.html');
+    const staticFiles = serveStatic(root, { index: false });
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path === '/api' || req.path.startsWith('/api/')) return next();
+      return staticFiles(req, res, next);
+    });
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (
+        (req.method !== 'GET' && req.method !== 'HEAD') ||
+        req.path === '/api' ||
+        req.path.startsWith('/api/') ||
+        extname(req.path) ||
+        !req.accepts('html')
+      )
+        return next();
+      return res.sendFile(index);
+    });
+  }
   app.useGlobalFilters(new ErrorFilter());
   app.enableShutdownHooks();
   await app.init();

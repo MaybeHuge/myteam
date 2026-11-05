@@ -41,7 +41,30 @@
 
 ## 部署与启动
 
-以下为本地或非生产环境的启动方式。生产部署、备份恢复和容量尚未完成验证；`infra/compose.yaml` 只提供 PostgreSQL 和 SeaweedFS，`infra/nginx.conf` 是入口参考配置，不包含完整应用容器和 TLS。
+以下为本地或非生产环境的启动方式。生产部署、备份恢复和容量尚未完成验证；`infra/compose.yaml` 只提供 PostgreSQL 和 SeaweedFS，应用镜像由根目录 Dockerfile 构建；`infra/nginx.conf` 可作为独立反向代理的参考配置。
+
+### Docker 镜像
+
+根目录的 `Dockerfile` 提供 `api` 和 `migrate` 两个构建目标：
+
+```sh
+docker build --target api -t myteam-api .
+docker build --target migrate -t myteam-migrate .
+```
+
+API 镜像启动时不会自动修改数据库或创建账号。先准备容器运行配置（例如 `.env.docker`），在其中设置 `API_HOST=0.0.0.0`，并将 `DATABASE_URL` 和 `S3_ENDPOINT` 指向容器网络中可访问的数据库和存储地址；容器内的 `localhost` 指的是容器自身。`APP_ORIGIN` 应为用户访问前端的来源。HTTP 本地体验需显式配置 `NODE_ENV=development` 和 `COOKIE_SECURE=false`；生产环境应使用 HTTPS、`NODE_ENV=production` 和 `COOKIE_SECURE=true`。
+
+以下命令以数据库、存储和应用均可访问的 Docker 网络 `myteam_default` 为例，需先创建或启动该网络及其依赖服务。数据库迁移和初始化为显式操作：
+
+```sh
+docker run --rm --network myteam_default --env-file .env.docker myteam-migrate
+docker run --rm --network myteam_default --env-file .env.docker myteam-api node dist/cli/init-storage.js
+# 仅首次初始化新数据库时创建管理员，已有账号不会覆盖。
+docker run --rm --network myteam_default --env-file .env.docker myteam-api node dist/cli/create-admin.js
+docker run -d --name api --network myteam_default --env-file .env.docker -p 8080:3000 myteam-api
+```
+
+API 镜像同时提供前端静态页面和 `/api/v1` 接口；浏览器通过 `http://localhost:8080` 访问。反向代理、TLS、备份和生产容量仍须按部署环境配置与验证。`.dockerignore` 排除本地环境文件、依赖与数据目录；运行配置应通过环境变量或外部文件提供。
 
 ### 准备环境与配置
 
