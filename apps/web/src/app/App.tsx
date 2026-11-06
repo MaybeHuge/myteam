@@ -448,6 +448,7 @@ export function App() {
             borderColor: '#edf1e8',
             cellPaddingBlock: 6,
           },
+          Tag: { fontSizeSM: 11 },
           Drawer: { paddingLG: 28 },
           Tabs: { inkBarColor: '#39815c' },
         },
