@@ -436,6 +436,7 @@ export function App() {
           colorBgLayout: '#f5f7f2',
           colorBorder: '#dde5d9',
           borderRadius: 8,
+          fontSize: 13,
           fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", sans-serif',
         },
         components: {

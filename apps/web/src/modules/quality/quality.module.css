@@ -7,7 +7,7 @@
 }
 .heading h2 {
   margin: 0 0 8px;
-  font-size: 21px;
+  font-size: 18px;
 }
 .muted {
   color: #65725f;
@@ -90,7 +90,7 @@
 
 .defectHeader h2 {
   margin: 6px 0 12px;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -108,7 +108,7 @@
 }
 .detailSection > h3 {
   margin: 0 0 14px;
-  font-size: 16px;
+  font-size: 15px;
 }
 .descriptionBlock {
   min-width: 0;

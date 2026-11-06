@@ -12,7 +12,7 @@
   margin-bottom: 30px;
 }
 .pageIntro h1 {
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: -0.9px;
   font-weight: 650;
   line-height: 1.4;
@@ -57,7 +57,7 @@
 }
 .statCard strong {
   display: block;
-  font-size: 29px;
+  font-size: 24px;
   font-weight: 650;
   color: #213c38;
   line-height: 1;
@@ -600,7 +600,7 @@
   min-width: 0;
 }
 .detailIdentity h1 {
-  font-size: 23px;
+  font-size: 21px;
   font-weight: 650;
   letter-spacing: -0.5px;
   margin: 8px 0 11px;
@@ -1090,7 +1090,7 @@
     gap: 10px;
   }
   .pageIntro h1 {
-    font-size: 21px;
+    font-size: 20px;
   }
   .pageIntro p {
     font-size: 11px;
@@ -1114,7 +1114,7 @@
     padding: 15px 13px;
   }
   .statCard strong {
-    font-size: 26px;
+    font-size: 22px;
   }
   .statCard small {
     display: none;
@@ -1161,7 +1161,7 @@
     gap: 14px;
   }
   .detailIdentity h1 {
-    font-size: 20px;
+    font-size: 19px;
   }
   .detailIdentity .large {
     width: 53px;

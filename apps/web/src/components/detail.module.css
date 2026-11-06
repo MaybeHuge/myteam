@@ -1,6 +1,6 @@
 /* Shared visual hierarchy for read-only detail views. */
 .detail :global(.ant-drawer-body) > h2 {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -23,7 +23,7 @@
 .detail dl dd {
   margin: 0;
   color: #26372b;
-  font-size: 14px;
+  font-size: 13px;
   overflow-wrap: anywhere;
 }
 .detail :global(.ant-tabs-tabpane) > h3 {
@@ -31,7 +31,7 @@
   padding-top: 20px;
   border-top: 1px solid #e1e8df;
   color: #26372b;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 650;
 }
 .detail :global(.ant-tabs-tabpane) > h3:first-child {

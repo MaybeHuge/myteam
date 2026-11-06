@@ -13,7 +13,7 @@
   gap: 16px;
 }
 .heading h2 {
-  font-size: 21px;
+  font-size: 18px;
   margin: 7px 0;
   letter-spacing: -0.5px;
 }
@@ -57,7 +57,7 @@
 }
 .stats strong {
   display: block;
-  font-size: 25px;
+  font-size: 22px;
   color: #304538;
   margin-top: 7px;
 }
@@ -141,7 +141,7 @@
     align-items: flex-start;
   }
   .heading h2 {
-    font-size: 19px;
+    font-size: 18px;
   }
   .toolbar {
     flex-wrap: wrap;

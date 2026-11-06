@@ -12,6 +12,7 @@
 }
 body {
   margin: 0;
+  font-size: 13px;
 }
 a {
   color: inherit;
@@ -74,7 +75,7 @@ input {
   color: #82cabb;
 }
 .story-copy h1 {
-  font-size: clamp(28px, 3vw, 40px);
+  font-size: clamp(25px, 2.6vw, 34px);
   font-weight: 650;
   line-height: 1.45;
   letter-spacing: -1.5px;
@@ -82,7 +83,7 @@ input {
 }
 .story-copy p {
   color: #abc0ca;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.95;
 }
 .flow-line {
@@ -161,7 +162,7 @@ input {
   margin-bottom: 14px;
 }
 .login-form-wrap h2.ant-typography {
-  font-size: 26px;
+  font-size: 22px;
   margin: 0 0 10px;
   color: #20323b;
 }
@@ -534,7 +535,7 @@ input {
   font-weight: 600;
 }
 .welcome-copy h2 {
-  font-size: 22px;
+  font-size: 20px;
   color: #49633c;
   letter-spacing: -0.5px;
   line-height: 1.5;
@@ -801,7 +802,7 @@ input {
   margin-bottom: 28px;
 }
 .page-heading h1 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.7px;
   margin: 9px 0 10px;
@@ -875,7 +876,7 @@ input {
     padding: 28px 0 5px;
   }
   .story-copy h1 {
-    font-size: 27px;
+    font-size: 24px;
     margin: 10px 0;
   }
   .story-copy p,
@@ -936,7 +937,7 @@ input {
     min-height: 185px;
   }
   .welcome-copy h2 {
-    font-size: 21px;
+    font-size: 19px;
   }
   .welcome-copy p {
     font-size: 11px;
@@ -980,7 +981,7 @@ input {
     gap: 18px;
   }
   .page-heading h1 {
-    font-size: 21px;
+    font-size: 20px;
   }
   .page-heading {
     align-items: flex-start;
@@ -1016,7 +1017,7 @@ input {
 }
 .people-summary strong {
   display: block;
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 600;
   color: #526b42;
   margin: 14px 0 10px;
@@ -1041,7 +1042,7 @@ input {
     display: none;
   }
   .people-summary strong {
-    font-size: 25px;
+    font-size: 22px;
     margin-bottom: 0;
   }
   .people-search {
