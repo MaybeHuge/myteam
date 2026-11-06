@@ -707,7 +707,6 @@ export function ProjectTestRecords(props: Common) {
     <section>
       <div className={styles.heading}>
         <div>
-          <h2>{t('测试记录')}</h2>
           <p>{t('按需求验证用例，记录每次测试、复测和发现的问题。')}</p>
         </div>
         {list.data?.canCreate && (

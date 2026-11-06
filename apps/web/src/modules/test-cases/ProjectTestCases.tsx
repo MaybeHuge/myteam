@@ -502,7 +502,6 @@ export function ProjectTestCases({
     <>
       <div className={styles.heading}>
         <div>
-          <h2>{t('测试用例库')}</h2>
           <p className={styles.muted}>
             {t('关联已确认需求，逐步完善步骤，让每次评审都有据可查。')}
           </p>

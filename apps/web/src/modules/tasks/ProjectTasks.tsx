@@ -376,7 +376,6 @@ export function ProjectTasks({ project, session }: { project: Project; session: 
     <>
       <div className={styles.heading}>
         <div>
-          <h2>{t('任务管理')}</h2>
           <p className={styles.muted}>{t('把需求拆成清晰的行动，安排负责人和交付时间。')}</p>
         </div>
         {list.data?.canCreate && (

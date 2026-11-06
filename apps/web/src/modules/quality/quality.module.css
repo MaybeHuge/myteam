@@ -5,9 +5,8 @@
   align-items: center;
   margin-bottom: 20px;
 }
-.heading h2 {
-  margin: 0 0 8px;
-  font-size: 18px;
+.heading p {
+  margin: 0;
 }
 .muted {
   color: #65725f;

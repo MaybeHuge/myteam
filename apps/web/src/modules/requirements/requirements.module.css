@@ -12,9 +12,8 @@
   gap: 16px;
   margin-bottom: 20px;
 }
-.heading h2 {
+.heading p {
   margin: 0;
-  font-size: 18px;
 }
 .muted {
   color: #7b8495;

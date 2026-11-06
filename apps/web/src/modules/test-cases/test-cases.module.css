@@ -12,9 +12,8 @@
   gap: 16px;
   margin-bottom: 20px;
 }
-.heading h2 {
+.heading p {
   margin: 0;
-  font-size: 18px;
 }
 .muted {
   color: #7b8495;
@@ -104,6 +103,13 @@
   }
 }
 
+.stepsLabel {
+  margin: 0 0 8px;
+  color: #304538;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.57;
+}
 .step {
   border: 1px solid #e8ecf3;
   border-radius: 10px;

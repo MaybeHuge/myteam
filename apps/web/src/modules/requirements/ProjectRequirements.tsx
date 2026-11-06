@@ -619,7 +619,6 @@ export function ProjectRequirements({
     <>
       <div className={styles.heading}>
         <div>
-          <h2>{t('需求管理')}</h2>
           <p className={styles.muted}>{t('把想法写清楚，让评审结论有据可查。')}</p>
         </div>
         {list.data?.canCreate && (

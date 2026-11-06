@@ -193,7 +193,7 @@ export function CaseEditor({
           <Form.List name="steps">
             {(fields, { add, remove, move }) => (
               <>
-                <h3>{t('测试步骤与预期')}</h3>
+                <h3 className={styles.stepsLabel}>{t('测试步骤与预期')}</h3>
                 {fields.map((field, index) => (
                   <section
                     className={styles.step}

@@ -1,18 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Alert,
-  App,
-  Button,
-  Input,
-  Modal,
-  Pagination,
-  Radio,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { Alert, App, Button, Input, Modal, Pagination, Radio, Space, Table, Tag } from 'antd';
 import { useNavigate } from 'react-router';
 import {
   projectDocumentListSchema,
@@ -105,9 +93,8 @@ export function ProjectDocuments({
   };
   return (
     <section>
-      <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Typography.Title level={3}>{t('项目文档')}</Typography.Title>
-        {list.data?.canCreate && (
+      {list.data?.canCreate && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
           <Button
             type="primary"
             onClick={() => {
@@ -121,8 +108,8 @@ export function ProjectDocuments({
           >
             {t('新建文档')}
           </Button>
-        )}
-      </Space>
+        </div>
+      )}
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search
           placeholder={t('搜索文档标题')}

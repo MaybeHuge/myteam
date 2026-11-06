@@ -516,12 +516,10 @@ export function ProjectQuality({ mode, project, session }: Common & { mode: Mode
         else next.delete(k);
       return next;
     });
-  const title = mode === 'releases' ? t('版本与构建') : t('缺陷管理');
   return (
     <section>
       <div className={styles.heading}>
         <div>
-          <h2>{title}</h2>
           <p>
             {mode === 'releases'
               ? t('管理交付范围和构建来源。')
