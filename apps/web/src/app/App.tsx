@@ -254,7 +254,6 @@ function Workspace({ session }: { session: SessionResponse }) {
             <ProjectSwitcher session={session} />
           </div>
           <div className="topbar-actions">
-            <LanguageSwitcher />
             <Input
               ref={searchRef}
               aria-label={t('快速搜索项目')}
@@ -268,6 +267,7 @@ function Workspace({ session }: { session: SessionResponse }) {
               }}
               className="global-search"
             />
+            <LanguageSwitcher />
             <NotificationCenter session={session} />
             <span className="header-divider" />
             <Tooltip title={session.user.name}>

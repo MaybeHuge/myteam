@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "pnpm build && concurrently -k 'tsc -p tsconfig.json --watch' 'node --env-file=../../.env --watch dist/main.js'",
+    "dev": "pnpm db:generate && pnpm build && concurrently -k 'tsc -p tsconfig.json --watch' 'node --env-file=../../.env --watch dist/main.js'",
     "start": "node dist/main.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
